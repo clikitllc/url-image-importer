@@ -94,7 +94,7 @@ class Ui_Big_File_Uploads_File_Scan {
 		$this->root_path  = rtrim( $root_path, '/' );
 		$this->timeout    = $timeout;
 		$this->paths_left = $paths_left;
-		$this->instance   = BigFileUploads::get_instance();
+		$this->instance   = UrlBigFileUploads::get_instance();
 	}
 
 	/**

@@ -22,6 +22,10 @@ define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
 define( 'UIMPTR_VERSION', 1.0 );
 define( 'UPLOADBLOGSDIR', $upload_dir['path'] );
 require_once UIMPTR_PATH . '/classes/class-ui-big-file-uploads-file-scan.php';
+if ( ! class_exists( 'UrlBigFileUploads' ) ) {
+	require_once UIMPTR_PATH . '/classes/tuxedo_big_file_uploads.php';
+}
+
 /**
  * Plugin menu page callback.
  */
