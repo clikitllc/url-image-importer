@@ -2,8 +2,8 @@
 Contributors: bww
 Tags: import image, image import, import image to media library, media library
 Requires at least: 5.3
-Tested up to: 6.7.1
-Stable tag: 1.0.3
+Tested up to: 6.8.2
+Stable tag: 1.0.4
 Requires PHP: 7.4
 License: GPLv2 or higher
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,6 +58,34 @@ Big File Uploads is built to work with [Infinite Uploads](https://wordpress.org/
 
 This plugin does not collect or share any data. Site admins can optionally subscribe to email updates which is subject to our [Privacy Policy](https://infiniteuploads.com/privacy/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=bfu_readme&utm_term=privacy).
 
+### Install Big File Uploads for free
+
+[Big File Form Uploads](https://infiniteuploads.com/big-file-form-uploads/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=uii_readme&utm_term=promo) lets you upload large media files directly to  the media library with the WordPress media uploader. Increase your  maximum upload size to any value – as large as your available disk space  allows – and add file chunking to avoid server timeout errors.
+
+### Wanna make your media library infinitely scalable? Move your big files and uploads directory to the cloud.
+
+Big File Uploads is built to work with [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) to make your site’s upload directory infinitely scalable. A large  WordPress media library can slow down your server and run up the cost of  bandwidth and storage with your hosting provider. Move your uploads  directory to the Infinite Uploads cloud to save on storage and bandwidth  and improve site performance and security. Learn more about [Infinite Uploads cloud storage and content delivery network](https://infiniteuploads.com/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=uii_readme&utm_term=promo).
+
+### Check out Big File Form Uploads
+
+[Big File Form Uploads](https://infiniteuploads.com/big-file-form-uploads/) is a paid add-on that  extends the functionality of increasing the maximum WordPress file upload size to your favorite form plugins for WordPress, including Contact Form 7, Gravity Forms, and Forminator! Set the limit in Big File Uploads, and that carries over to your file uploads in your forms to let your users upload big files! [Learn more about Big File Form Uploads!](https://infiniteuploads.com/big-file-form-uploads/)
+
+### About Us
+
+Infinite Uploads builds WordPress plugins and is a premium cloud storage provider and content delivery network (CDN) for all your WordPress media files. Learn more here:
+[infiniteuploads.com](https://infiniteuploads.com/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=uii_readme&utm_term=about_us)
+
+Learn how to manage large files on our blog:
+[Infinite Uploads Blog, Tips, Tricks, How-tos, and News](https://infiniteuploads.com/blog/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=URLII_readme&utm_term=blog)
+
+Enjoy!
+
+== Contact and Credits ==
+
+Maintained by the cloud architects and WordPress engineers at [Infinite Uploads](https://infiniteuploads.com/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=URLII_readme&utm_term=credits).
+
+
+
 == Frequently Asked Questions ==
 
 = What file types can be uploaded? =
@@ -103,16 +131,3 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 1.0 - 1/23/2025
 ----------------------------------------------------------------------
 - Initial release
-
-== About Us ==
-Infinite Uploads builds WordPress plugins and is a premium cloud storage provider and content delivery network (CDN) for all your WordPress media files. Learn more here:
-[infiniteuploads.com](https://infiniteuploads.com/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=bfu_readme&utm_term=about_us)
-
-Learn how to manage large files on our blog:
-[Infinite Uploads Blog, Tips, Tricks, How-tos, and News](https://infiniteuploads.com/blog/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=URLII_readme&utm_term=blog)
-
-Enjoy!
-
-== Contact and Credits ==
-
-Maintained by the cloud architects and WordPress engineers at [Infinite Uploads](https://infiniteuploads.com/?utm_source=wordpress.org&utm_medium=readme&utm_campaign=URLII_readme&utm_term=credits).
