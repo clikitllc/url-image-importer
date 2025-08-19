@@ -3,7 +3,7 @@
  *
  * Plugin Name: URL Image Importer
  * Description: A plugin to import multiple images into the WordPress Media Library from URLs.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Infinite Uploads
  * Author URI: https://infiniteuploads.com
  * Text Domain: url-image-importer
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', 1.0 );
+define( 'UIMPTR_VERSION', '1.0.4' );
 define( 'UPLOADBLOGSDIR', $upload_dir['path'] );
 require_once UIMPTR_PATH . '/classes/class-ui-big-file-uploads-file-scan.php';
 if ( ! class_exists( 'UrlBigFileUploads' ) ) {
