@@ -254,8 +254,8 @@ function uimptr_import_images_url_page() {
 							</label>
 						</div>
 					</div>
-					<div class="row justify-right-right mb-2 btn-row">
-						<div class="col-md-12 col-md-5 col-xl-4 text-center">
+					<div class="row mb-2">
+						<div class="col-12 text-center">
 							<button type="button" id="start-url-import" class="button button-primary"><?php esc_html_e( 'Import Images from URLs', 'url-image-importer' ); ?></button>
 						</div>
 					</div>
@@ -323,8 +323,8 @@ function uimptr_import_images_url_page() {
 						</div>
 					</div>
 					
-					<div class="row justify-right-right mb-2 btn-row">
-						<div class="col-md-12 col-md-5 col-xl-4 text-center">
+					<div class="row mb-2">
+						<div class="col-12 text-center">
 							<button type="button" id="start-xml-import" class="button button-primary"><?php esc_html_e( 'Import from XML File', 'url-image-importer' ); ?></button>
 						</div>
 					</div>
@@ -402,8 +402,8 @@ function uimptr_import_images_url_page() {
 					</div>
 				</div>
 				
-				<div class="row justify-right-right mb-2 btn-row">
-					<div class="col-md-12 col-md-5 col-xl-4 text-center">
+				<div class="row mb-2">
+					<div class="col-12 text-center">
 						<button type="button" id="start-csv-import" class="button button-primary"><?php esc_html_e( 'Import from CSV File', 'url-image-importer' ); ?></button>
 					</div>
 				</div>
