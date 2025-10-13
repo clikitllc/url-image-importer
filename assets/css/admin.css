@@ -578,7 +578,7 @@ input.bfu-input-subscribe {
 
 .nav-tab-active {
   background: #fff !important;
-  color: #EE7C1E !important;
+  color: #0073aa !important;
   border-bottom-color: #fff !important;
   position: relative;
   font-weight: 600;
@@ -591,7 +591,7 @@ input.bfu-input-subscribe {
   left: 0;
   right: 0;
   height: 3px;
-  background-color: #EE7C1E;
+  background-color: #0073aa;
   border-radius: 2px 2px 0 0;
 }
 
@@ -689,22 +689,40 @@ input[type="file"]::-webkit-file-upload-button:hover {
   border-left: 3px solid #6c757d;
 }
 
-/* Import Button Centering */
+/* Import Button Centering - Override WordPress admin styles */
 .import-method .row.mb-2 {
-  margin-top: 20px;
-  margin-bottom: 20px;
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 
 .import-method .col-12.text-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .import-method .button.button-primary {
-  min-width: 200px;
-  padding: 10px 20px;
-  text-align: center;
+  min-width: 200px !important;
+  padding: 10px 20px !important;
+  text-align: center !important;
+  margin: 0 auto !important;
+  display: inline-block !important;
+}
+
+/* Specific fixes for WordPress admin interference */
+.wrap .import-method .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.wrap .import-method .col-12 {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
 }
 
 @media (max-width: 768px) {

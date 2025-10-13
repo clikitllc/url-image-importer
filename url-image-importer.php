@@ -3,7 +3,7 @@
  *
  * Plugin Name: URL Image Importer
  * Description: A plugin to import multiple images into the WordPress Media Library from URLs.
- * Version: 1.0.4
+ * Version: 1.0.6
  * Author: Infinite Uploads
  * Author URI: https://infiniteuploads.com
  * Text Domain: url-image-importer
@@ -21,7 +21,7 @@ error_log( 'URL Image Importer: Plugin file loaded' );
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', '1.0.4' );
+define( 'UIMPTR_VERSION', '1.0.5' );
 define( 'UPLOADBLOGSDIR', $upload_dir['path'] );
 
 // Composer autoload for PSR-4 classes
@@ -254,9 +254,9 @@ function uimptr_import_images_url_page() {
 							</label>
 						</div>
 					</div>
-					<div class="row mb-2">
-						<div class="col-12 text-center">
-							<button type="button" id="start-url-import" class="button button-primary"><?php esc_html_e( 'Import Images from URLs', 'url-image-importer' ); ?></button>
+					<div class="row justify-content-center mb-2">
+						<div class="col-md-6 col-md-5 col-xl-4 text-center">
+							<button type="button" id="start-url-import" class="btn text-nowrap btn-primary btn-lg"><?php esc_html_e( 'Import Images from URLs', 'url-image-importer' ); ?></button>
 						</div>
 					</div>
 					
@@ -275,7 +275,7 @@ function uimptr_import_images_url_page() {
 							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="url-skipped-count">0</span></span>
 						</div>
 						<div class="progress-actions">
-							<button type="button" id="cancel-url-import" class="button button-secondary" style="color: #d63384; border-color: #d63384;" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( '⏹ Stop Import', 'url-image-importer' ); ?></button>
+							<button type="button" id="cancel-url-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
 						</div>
 						<div id="url-import-results" style="margin-top: 15px;"></div>
 					</div>
@@ -323,9 +323,9 @@ function uimptr_import_images_url_page() {
 						</div>
 					</div>
 					
-					<div class="row mb-2">
-						<div class="col-12 text-center">
-							<button type="button" id="start-xml-import" class="button button-primary"><?php esc_html_e( 'Import from XML File', 'url-image-importer' ); ?></button>
+					<div class="row justify-content-center mb-2">
+						<div class="col-md-6 col-md-5 col-xl-4 text-center">
+							<button type="button" id="start-xml-import" class="btn text-nowrap btn-primary btn-lg"><?php esc_html_e( 'Import from XML File', 'url-image-importer' ); ?></button>
 						</div>
 					</div>
 					
@@ -344,7 +344,7 @@ function uimptr_import_images_url_page() {
 							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="xml-skipped-count">0</span></span>
 						</div>
 						<div class="progress-actions">
-							<button type="button" id="cancel-xml-import" class="button button-secondary" style="color: #d63384; border-color: #d63384;" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( '⏹ Stop Import', 'url-image-importer' ); ?></button>
+							<button type="button" id="cancel-xml-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
 						</div>
 						<div id="xml-import-results" style="margin-top: 15px;"></div>
 					</div>
@@ -357,54 +357,50 @@ function uimptr_import_images_url_page() {
 	<div id="csv-import" class="import-method" style="display: none;">
 		<form method="post" enctype="multipart/form-data">
 			<?php wp_nonce_field( 'uimptr-csv-import', '_wpnonce_csv_import' ); ?>
-			
-			<div class="container">
-				<div class="row">
-					<div class="col-md-12">
-						<div class="form-group">
-							<label for="csv_file"><?php esc_html_e( 'Select CSV File:', 'url-image-importer' ); ?></label>
-							<input type="file" id="csv_file" name="csv_file" accept=".csv" class="form-control" required>
-							<small class="form-text text-muted">
-								<?php esc_html_e( 'Upload a CSV file containing image URLs and metadata.', 'url-image-importer' ); ?>
-							</small>
+			<div class="card upload">
+				<div class="card-header">
+					<div class="d-flex align-items-center">
+						<h5 class="m-0 mr-auto p-0"><?php echo esc_html( 'CSV Import File' ); ?></h5>
+					</div>
+				</div>
+				<div class="card-body p-md-1">
+					<div class="row justify-content-center mb-3 mt-3">
+						<div class="col">
+							<p><?php esc_html_e( 'Upload a CSV file containing image URLs and metadata.', 'url-image-importer' ); ?></p>
+							<input type="file" id="csv_file" name="csv_file" accept=".csv" required />
+							<p class="description">
+								<?php esc_html_e( 'Select a .csv file with image URLs and optional metadata columns.', 'url-image-importer' ); ?>
+							</p>
 							<div style="text-align: center; margin-top: 10px;">
 								<a href="#" id="download-sample-csv" class="button button-secondary"><?php esc_html_e( 'Download Sample CSV', 'url-image-importer' ); ?></a>
 							</div>
 						</div>
 					</div>
-				</div>
-				
-				<div class="row">
-					<div class="col-md-6">
-						<div class="form-group">
+					
+					<div class="row mb-3">
+						<div class="col">
+							<h6><?php esc_html_e( 'Import Options:', 'url-image-importer' ); ?></h6>
 							<label>
-								<input type="checkbox" name="csv_images_only" value="1">
-								<?php esc_html_e( 'Import Images Only', 'url-image-importer' ); ?>
-							</label>
-							<small class="form-text text-muted"><?php esc_html_e( 'Skip non-image files during import', 'url-image-importer' ); ?></small>
-						</div>
-						<div class="form-group">
+								<input type="checkbox" name="csv_images_only" value="1" checked />
+								<?php esc_html_e( 'Import images only (skip other file types)', 'url-image-importer' ); ?>
+							</label><br />
 							<label>
-								<input type="checkbox" name="csv_preserve_dates" id="csv_preserve_dates">
-								<?php esc_html_e( 'Preserve Original Dates', 'url-image-importer' ); ?>
-							</label>
-							<small class="form-text text-muted"><?php esc_html_e( 'Keep original dates instead of importing as current date', 'url-image-importer' ); ?></small>
-						</div>
-					</div>
-					<div class="col-md-6">
-						<div class="form-group">
+								<input type="checkbox" name="csv_force_reimport" value="1" />
+								<?php esc_html_e( 'Force re-import (import even if files already exist)', 'url-image-importer' ); ?>
+							</label><br />
 							<label>
-								<input type="checkbox" name="csv_force_reimport" value="1">
-								<?php esc_html_e( 'Force Re-import', 'url-image-importer' ); ?>
+								<input type="checkbox" name="csv_preserve_dates" id="csv_preserve_dates" />
+								<?php esc_html_e( 'Preserve original dates instead of importing as current date', 'url-image-importer' ); ?>
 							</label>
-							<small class="form-text text-muted"><?php esc_html_e( 'Re-import files that already exist', 'url-image-importer' ); ?></small>
 						</div>
 					</div>
 				</div>
+			</div>
 				
-				<div class="row mb-2">
-					<div class="col-12 text-center">
-						<button type="button" id="start-csv-import" class="button button-primary"><?php esc_html_e( 'Import from CSV File', 'url-image-importer' ); ?></button>
+				
+				<div class="row justify-content-center mb-2">
+					<div class="col-md-6 col-md-5 col-xl-4 text-center">
+						<button type="button" id="start-csv-import" class="btn text-nowrap btn-primary btn-lg"><?php esc_html_e( 'Import from CSV File', 'url-image-importer' ); ?></button>
 					</div>
 				</div>
 				
@@ -424,7 +420,7 @@ function uimptr_import_images_url_page() {
 							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="csv-skipped-count">0</span></span>
 						</div>
 						<div class="progress-actions">
-							<button type="button" id="cancel-csv-import" class="button button-secondary" style="color: #d63384; border-color: #d63384;" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( '⏹ Stop Import', 'url-image-importer' ); ?></button>
+							<button type="button" id="cancel-csv-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
 						</div>
 						<div id="csv-import-results" style="margin-top: 15px;"></div>
 					</div>
@@ -444,8 +440,8 @@ function uimptr_import_images_url_page() {
 				<!-- Preview content will be loaded here -->
 			</div>
 			<div style="padding: 20px; border-top: 1px solid #ddd; text-align: right; background: #f9f9f9;">
-				<button type="button" id="cancel-import-preview" class="button">Cancel</button>
-				<button type="button" id="confirm-import" class="button button-primary" style="margin-left: 10px;">Import Selected Items</button>
+				<button type="button" id="cancel-import-preview" class="btn text-nowrap btn-primary btn-lg">Cancel</button>
+				<button type="button" id="confirm-import" class="btn text-nowrap btn-primary btn-lg" style="margin-left: 10px;">Import Selected Items</button>
 			</div>
 		</div>
 	</div>
@@ -478,6 +474,34 @@ function uimptr_import_images_url_page() {
 
 	<script>
 	jQuery(document).ready(function($) {
+		// Force center alignment on all import buttons to override WordPress admin styles
+		setTimeout(function() {
+			$('.button-primary').each(function() {
+				var $button = $(this);
+				var $container = $button.closest('.row');
+				
+				// Apply aggressive centering styles
+				$container.css({
+					'display': 'flex !important',
+					'justify-content': 'center !important',
+					'align-items': 'center !important',
+					'text-align': 'center !important'
+				});
+				
+				$button.parent().css({
+					'display': 'flex !important',
+					'justify-content': 'center !important',
+					'align-items': 'center !important',
+					'text-align': 'center !important'
+				});
+				
+				$button.css({
+					'margin': '0 auto !important',
+					'display': 'inline-block !important'
+				});
+			});
+		}, 100);
+		
 		// Define AJAX data if not already available
 		if (typeof uimptr_ajax === 'undefined') {
 			window.uimptr_ajax = {
@@ -590,6 +614,8 @@ function uimptr_import_images_url_page() {
 			resetStats(previewData.type);
 			$('#' + previewData.type + '-progress-container').show();
 			$('#start-' + previewData.type + '-import').prop('disabled', true);
+			// Show the cancel button when import starts
+			$('#cancel-' + previewData.type + '-import').show();
 			
 			// Start the import
 			updateProgress(previewData.type, 0, selectedItems.length, '<?php esc_html_e( 'Starting import...', 'url-image-importer' ); ?>');
@@ -627,6 +653,8 @@ function uimptr_import_images_url_page() {
 			resetStats('url');
 			$('#url-progress-container').show();
 			$('#start-url-import').prop('disabled', true);
+			// Show the cancel button when import starts
+			$('#cancel-url-import').show();
 			
 			// Generate batch ID and set active import tracking
 			activeImportBatchId = 'url-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -676,20 +704,24 @@ function uimptr_import_images_url_page() {
 						updateProgress(type, data.processed, data.total, '<?php esc_html_e( 'Processed:', 'url-image-importer' ); ?> ' + data.processed + '/' + data.total, data.stats);
 						
 						if (data.is_complete) {
-							// Show results
-							var allResults = data.results || [];
-							var allErrors = data.errors || [];
+							// Show results from final batch only (for display)
+							var finalResults = data.results || [];
+							var finalErrors = data.errors || [];
 							var results = [];
 							
-							allResults.forEach(function(result) {
+							finalResults.forEach(function(result) {
 								results.push('<div class="notice notice-success"><p><?php esc_html_e( 'Success:', 'url-image-importer' ); ?> ' + result.url + '</p></div>');
 							});
 							
-							allErrors.forEach(function(error) {
+							finalErrors.forEach(function(error) {
 								results.push('<div class="notice notice-error"><p>' + error + '</p></div>');
 							});
 							
-							finishImport(type, allResults.length, allErrors.length, results);
+							// Use cumulative stats for completion message, not just final batch
+							var totalImported = data.stats ? data.stats.success : finalResults.length;
+							var totalErrors = data.stats ? data.stats.failed : finalErrors.length;
+							
+							finishImport(type, totalImported, totalErrors, results);
 						} else {
 							// Continue with next batch
 							setTimeout(function() {
@@ -724,6 +756,8 @@ function uimptr_import_images_url_page() {
 			resetStats('xml');
 			$('#xml-progress-container').show();
 			$('#start-xml-import').prop('disabled', true);
+			// Show the cancel button when import starts
+			$('#cancel-xml-import').show();
 			
 			updateProgress('xml', 0, 1, '<?php esc_html_e( 'Uploading and processing XML file...', 'url-image-importer' ); ?>');
 			
@@ -981,7 +1015,8 @@ function uimptr_import_images_url_page() {
 			}
 			
 			$('#start-' + type + '-import').prop('disabled', false);
-			$('#cancel-' + type + '-import').prop('disabled', false).text('<?php esc_html_e( 'Cancel Import', 'url-image-importer' ); ?>');
+			// Hide the cancel button when import is completed
+			$('#cancel-' + type + '-import').hide();
 			
 			// Clear active import tracking
 			activeImportBatchId = null;
@@ -1177,19 +1212,46 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 
 	$upload_dir = wp_upload_dir();
 	$filename_url_path = is_string( $image_url ) ? parse_url( $image_url, PHP_URL_PATH ) : false;
-	$filename   = '';
+	$filename = '';
+	
 	if ( $filename_url_path && is_string( $filename_url_path ) ) {
 		$filename = basename( $filename_url_path );
 	}
 
-	if ( ! $filename ) {
-		$filename = 'imported_image_' . time() . '.jpg';
+	// If no filename or no extension, generate one based on content type or fallback
+	if ( ! $filename || ! pathinfo( $filename, PATHINFO_EXTENSION ) ) {
+		// Try to get extension from content type
+		$extension = 'jpg'; // Default fallback
+		if ( $image_type ) {
+			$type_parts = explode( '/', $image_type );
+			if ( count( $type_parts ) === 2 ) {
+				$extension = $type_parts[1];
+				// Handle some common variations
+				if ( $extension === 'jpeg' ) {
+					$extension = 'jpg';
+				}
+			}
+		}
+		
+		// Generate filename with title if available
+		$base_name = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
+		$filename = $base_name . '.' . $extension;
 	}
 
 	$file_path = $upload_dir['path'] . '/' . $filename;
-	file_put_contents( $file_path, $image_data );
+	
+	// Save the file
+	$saved = file_put_contents( $file_path, $image_data );
+	if ( $saved === false ) {
+		return new WP_Error( 'file_save_failed', 'Failed to save image file to uploads directory.' );
+	}
 
 	$file_type = wp_check_filetype( $filename, null );
+	
+	// Verify the file was actually saved and is readable
+	if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
+		return new WP_Error( 'file_not_accessible', 'Saved file is not accessible.' );
+	}
 
 	// Use metadata from XML if available, otherwise fall back to filename
 	$title = !empty($metadata['title']) ? sanitize_text_field($metadata['title']) : sanitize_file_name( $filename );
@@ -1227,7 +1289,17 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 
 	if ( ! is_wp_error( $attachment_id ) ) {
 		require_once ABSPATH . 'wp-admin/includes/image.php';
+		
+		// Generate attachment metadata (thumbnails, etc.)
 		$attach_data = wp_generate_attachment_metadata( $attachment_id, $file_path );
+		
+		// Debug log to check if metadata was generated
+		if ( empty( $attach_data ) ) {
+			error_log( "URL Image Importer: Failed to generate attachment metadata for {$filename}" );
+		} else {
+			error_log( "URL Image Importer: Generated metadata for {$filename}: " . print_r( $attach_data, true ) );
+		}
+		
 		wp_update_attachment_metadata( $attachment_id, $attach_data );
 		
 		// Set alt text from alt_text field, or fall back to title if available
@@ -1241,6 +1313,12 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		if ( !empty($alt_text) ) {
 			update_post_meta( $attachment_id, '_wp_attachment_image_alt', $alt_text );
 		}
+		
+		// Debug log successful import
+		error_log( "URL Image Importer: Successfully imported {$image_url} as attachment ID {$attachment_id}" );
+	} else {
+		// Debug log attachment creation failure
+		error_log( "URL Image Importer: Failed to create attachment for {$image_url}: " . $attachment_id->get_error_message() );
 	}
 
 	return $attachment_id;
@@ -1884,7 +1962,33 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 function uimptr_is_image_url( $url ) {
 	$image_extensions = array( 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'tiff', 'ico' );
 	$extension = strtolower( pathinfo( parse_url( $url, PHP_URL_PATH ), PATHINFO_EXTENSION ) );
-	return in_array( $extension, $image_extensions );
+	
+	// Check file extension first
+	if ( in_array( $extension, $image_extensions ) ) {
+		return true;
+	}
+	
+	// Check for common image hosting services (no file extension needed)
+	$image_services = array(
+		'picsum.photos',
+		'images.unsplash.com', 
+		'source.unsplash.com',
+		'via.placeholder.com',
+		'placehold.it',
+		'dummyimage.com',
+		'lorempixel.com'
+	);
+	
+	$parsed_url = parse_url( $url );
+	$host = isset( $parsed_url['host'] ) ? strtolower( $parsed_url['host'] ) : '';
+	
+	foreach ( $image_services as $service ) {
+		if ( strpos( $host, $service ) !== false ) {
+			return true;
+		}
+	}
+	
+	return false;
 }
 
 /**
