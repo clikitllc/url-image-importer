@@ -840,7 +840,8 @@ function uimptr_import_images_url_page() {
 				success: function(response) {
 					if (response.success) {
 						$('#' + type + '-progress-text').text('<?php esc_html_e( 'Import stopped by user.', 'url-image-importer' ); ?>');
-						$('#cancel-' + type + '-import').text('<?php esc_html_e( 'Cancel Import', 'url-image-importer' ); ?>');
+						// Hide the cancel button when import is stopped
+						$('#cancel-' + type + '-import').hide();
 						$('#start-' + type + '-import').prop('disabled', false);
 						activeImportBatchId = null;
 						activeImportType = null;
@@ -860,7 +861,8 @@ function uimptr_import_images_url_page() {
 		function cancelImport(type) {
 			importCanceled = true;
 			$('#' + type + '-progress-text').text('<?php esc_html_e( 'Import canceled by user.', 'url-image-importer' ); ?>');
-			$('#cancel-' + type + '-import').prop('disabled', true);
+			// Hide the cancel button when import is canceled
+			$('#cancel-' + type + '-import').hide();
 			$('#start-' + type + '-import').prop('disabled', false);
 			activeImportBatchId = null;
 			activeImportType = null;
