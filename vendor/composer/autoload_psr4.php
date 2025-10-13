@@ -8,6 +8,7 @@ $baseDir = dirname($vendorDir);
 return array(
     'UrlImageImporter\\Importer\\' => array($baseDir . '/src/Importer'),
     'UrlImageImporter\\FileScan\\' => array($baseDir . '/src/FileScan'),
+    'UrlImageImporter\\Core\\' => array($baseDir . '/src/Core'),
     'UrlImageImporter\\BigFileUploads\\' => array($baseDir . '/src/BigFileUploads'),
     'UrlImageImporter\\Admin\\' => array($baseDir . '/src/Admin'),
 );

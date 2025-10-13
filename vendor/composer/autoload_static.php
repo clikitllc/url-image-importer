@@ -11,6 +11,7 @@ class ComposerStaticInita09d309a3d43413883f0e79ad64274e2
         array (
             'UrlImageImporter\\Importer\\' => 26,
             'UrlImageImporter\\FileScan\\' => 26,
+            'UrlImageImporter\\Core\\' => 22,
             'UrlImageImporter\\BigFileUploads\\' => 32,
             'UrlImageImporter\\Admin\\' => 23,
         ),
@@ -24,6 +25,10 @@ class ComposerStaticInita09d309a3d43413883f0e79ad64274e2
         'UrlImageImporter\\FileScan\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src/FileScan',
+        ),
+        'UrlImageImporter\\Core\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/Core',
         ),
         'UrlImageImporter\\BigFileUploads\\' => 
         array (
