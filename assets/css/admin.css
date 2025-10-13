@@ -689,6 +689,24 @@ input[type="file"]::-webkit-file-upload-button:hover {
   border-left: 3px solid #6c757d;
 }
 
+/* Import Button Centering */
+.import-method .row.mb-2 {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.import-method .col-12.text-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.import-method .button.button-primary {
+  min-width: 200px;
+  padding: 10px 20px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .progress-stats {
     justify-content: flex-start;
@@ -698,5 +716,11 @@ input[type="file"]::-webkit-file-upload-button:hover {
     font-size: 12px;
     padding: 3px 8px;
     margin-right: 5px;
+  }
+  
+  .import-method .button.button-primary {
+    min-width: 180px;
+    width: 100%;
+    max-width: 300px;
   }
 }
