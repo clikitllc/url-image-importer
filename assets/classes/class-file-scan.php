@@ -32,7 +32,7 @@ class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFile
 		$this->root_path  = rtrim( $root_path, '/' ); //expected no trailing slash.
 		$this->timeout    = $timeout;
 		$this->paths_left = $paths_left;
-	$this->instance   = \UrlImageImporter\BigFileUploads\BigFileUploads::get_instance();
+	$this->instance   = null; // BigFileUploads dependency removed
 	}
 
 	/**

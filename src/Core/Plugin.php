@@ -163,7 +163,7 @@ class Plugin {
 				'leave_confirmation' => \esc_html__( 'If you leave this page the sync will be interrupted and you will have to continue where you left off later.', 'url-image-importer' ),
 			),
 			'ajax_url'            => \admin_url( 'admin-ajax.php' ),
-			   'local_types'         => \UrlImageImporter\BigFileUploads\Utils::get_filetypes( true ),
+			   'local_types'         => \UrlImageImporter\FileScan\Utils::get_filetypes( true ),
 			'default_upload_size' => \wp_max_upload_size(),
 			'uimptr_nonce'        => \wp_create_nonce( 'ajax-nonce' ),
 		);
@@ -208,7 +208,7 @@ class Plugin {
 			\wp_die( 'Nonce Verification Failed!' );
 		}
 
-		$path           = \UrlImageImporter\BigFileUploads\Utils::get_upload_dir_root();
+		$path           = \UrlImageImporter\FileScan\Utils::get_upload_dir_root();
 		$remaining_dirs = array();
 
 		if ( isset( $_POST['remaining_dirs'] ) && is_array( $_POST['remaining_dirs'] ) ) {

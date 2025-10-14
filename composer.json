@@ -5,7 +5,6 @@
     "autoload": {
         "psr-4": {
             "UrlImageImporter\\Core\\": "src/Core/",
-            "UrlImageImporter\\BigFileUploads\\": "src/BigFileUploads/",
             "UrlImageImporter\\FileScan\\": "src/FileScan/",
             "UrlImageImporter\\Admin\\": "src/Admin/",
             "UrlImageImporter\\Importer\\": "src/Importer/"

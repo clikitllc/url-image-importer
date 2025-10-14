@@ -32,13 +32,69 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     error_log('URL Image Importer: ERROR - Composer autoloader not found at ' . __DIR__ . '/vendor/autoload.php');
 }
 
-// Legacy class aliases for compatibility
-if (class_exists('UrlImageImporter\FileScan\FileScan')) {
-    class_alias('UrlImageImporter\FileScan\FileScan', 'Big_File_Uploads_File_Scan');
+// Check if Big File Uploads plugin directory exists (more reliable than is_plugin_active early in load)
+$big_file_uploads_exists = file_exists(WP_PLUGIN_DIR . '/tuxedo-big-file-uploads/tuxedo_big_file_uploads.php');
+
+// Legacy class aliases for compatibility - only if Big File Uploads plugin is not installed/active
+if (!class_exists('Big_File_Uploads_File_Scan') && !$big_file_uploads_exists) {
+    if (class_exists('UrlImageImporter\FileScan\FileScan')) {
+        class_alias('UrlImageImporter\FileScan\FileScan', 'Big_File_Uploads_File_Scan');
+        error_log('URL Image Importer: Created class alias for Big_File_Uploads_File_Scan');
+    }
 }
-if (class_exists('UrlImageImporter\BigFileUploads\ReviewNotice')) {
-    class_alias('UrlImageImporter\BigFileUploads\ReviewNotice', 'Big_File_Uploads_Review_Notice');
+
+// Note: Removed BigFileUploads ReviewNotice alias - this functionality is not needed in URL Image Importer
+
+// Log conflict detection
+if ($big_file_uploads_exists) {
+    error_log('URL Image Importer: Big File Uploads plugin detected - skipping class aliases to prevent conflicts');
 }
+
+// Check for plugin conflicts and display admin notice if needed
+add_action('admin_notices', 'uimptr_check_plugin_conflicts');
+
+/**
+ * Check for plugin conflicts and display warnings
+ */
+function uimptr_check_plugin_conflicts() {
+    // Only show on admin pages
+    if (!is_admin()) {
+        return;
+    }
+    
+    // Check if Big File Uploads is also active (now we can safely use is_plugin_active)
+    if (function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php')) {
+        // Only show once per session
+        if (!get_transient('uimptr_bfu_notice_shown')) {
+            echo '<div class="notice notice-info is-dismissible"><p>';
+            echo '<strong>URL Image Importer:</strong> ';
+            echo esc_html__('Big File Uploads plugin is also active. Both plugins can work together safely.', 'url-image-importer');
+            echo '</p></div>';
+            set_transient('uimptr_bfu_notice_shown', true, DAY_IN_SECONDS);
+        }
+    }
+    
+    // Check for unexpected class conflicts
+    if (class_exists('Big_File_Uploads_File_Scan') && class_exists('UrlImageImporter\FileScan\FileScan')) {
+        try {
+            $reflection = new ReflectionClass('Big_File_Uploads_File_Scan');
+            $filename = $reflection->getFileName();
+            
+            // If the class is not from our plugin and not from Big File Uploads, show warning
+            if ($filename && 
+                strpos($filename, 'url-image-importer') === false && 
+                strpos($filename, 'tuxedo-big-file-uploads') === false) {
+                echo '<div class="notice notice-warning"><p>';
+                echo '<strong>URL Image Importer:</strong> ';
+                echo esc_html__('Class conflict detected with another plugin. Please contact support if you experience issues.', 'url-image-importer');
+                echo '</p></div>';
+            }
+        } catch (Exception $e) {
+            // Ignore reflection errors
+        }
+    }
+}
+
 /**
  * Plugin menu page callback.
  */
