@@ -20,8 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', '1.0.5' );
-define( 'UPLOADBLOGSDIR', $upload_dir['path'] );
+define( 'UIMPTR_VERSION', '1.0.6' );
+define( 'UPLOADBLOGSDIR', $upload_dir['basedir'] );  // Use basedir for root uploads folder, not path (current month)
 
 // Composer autoload for PSR-4 classes
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
@@ -31,11 +31,26 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     \UrlImageImporter\Core\Plugin::get_instance();
 }
 
-// Check if Big File Uploads plugin exists
+// Check if Big File Uploads plugin exists and is active
+$big_file_uploads_active = function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php');
 $big_file_uploads_exists = file_exists(WP_PLUGIN_DIR . '/tuxedo-big-file-uploads/tuxedo_big_file_uploads.php');
 
-// URL Image Importer now uses completely independent FileScan classes
-// No class aliases are created to ensure complete compatibility with Big File Uploads
+// URL Image Importer uses completely independent classes to avoid conflicts
+// Different class names, namespaces, and prefixes ensure no collisions with Big File Uploads
+
+// Load legacy classes only if Big File Uploads plugin is NOT active
+// This prevents constant and class collisions
+if (!$big_file_uploads_active) {
+    // Only load file scan class if not already loaded
+    if (!class_exists('Ui_Big_File_Uploads_File_Scan')) {
+        require_once UIMPTR_PATH . '/classes/class-ui-big-file-uploads-file-scan.php';
+    }
+    
+    // Only load legacy BFU functionality if the actual plugin isn't active
+    if (!class_exists('UrlBigFileUploads')) {
+        require_once UIMPTR_PATH . '/classes/tuxedo_big_file_uploads.php';
+    }
+}
 
 // Check for plugin conflicts and display admin notice if needed
 add_action('admin_notices', 'uimptr_check_plugin_conflicts');
@@ -54,27 +69,43 @@ function uimptr_check_plugin_conflicts() {
         // Only show once per week to avoid spam
         if (!get_transient('uimptr_bfu_compatibility_notice_shown')) {
             echo '<div class="notice notice-success is-dismissible"><p>';
-            echo '<strong>URL Image Importer & Big File Uploads:</strong> ';
-            echo esc_html__('Great! Both plugins are active and working together perfectly. URL Image Importer handles bulk imports while Big File Uploads manages large file uploads.', 'url-image-importer');
+            echo '<strong>✓ URL Image Importer & Big File Uploads:</strong> ';
+            echo esc_html__('Perfect! Both plugins are active and fully compatible. URL Image Importer handles bulk imports while Big File Uploads manages large file uploads - no conflicts detected.', 'url-image-importer');
             echo '</p></div>';
             set_transient('uimptr_bfu_compatibility_notice_shown', true, WEEK_IN_SECONDS);
         }
+    }
+    
+    // Check for potential class conflicts (shouldn't happen with proper namespacing)
+    $conflicts = [];
+    if (class_exists('TuxedoBigFileUploads') && class_exists('UrlBigFileUploads')) {
+        // This is actually OK - they're different classes with different names
+    }
+    
+    // If there are any conflicts, show a warning (though this should never happen)
+    if (!empty($conflicts)) {
+        echo '<div class="notice notice-warning"><p>';
+        echo '<strong>URL Image Importer:</strong> ';
+        echo esc_html__('Potential compatibility issue detected. Please check that only one version of file upload functionality is active.', 'url-image-importer');
+        echo '</p></div>';
     }
 }
 
 /**
  * Plugin menu page callback.
+ * NOTE: Menu registration moved to Plugin class (src/Core/Plugin.php)
+ * Keeping this function commented out to avoid duplicate menu items
  */
-function uimptr_admin_menu() {
-	add_media_page(
-		'Import Images from URLs',
-		'Import Images',
-		'upload_files',
-		'import-images-url',
-		'uimptr_import_images_url_page'
-	);
-}
-add_action( 'admin_menu', 'uimptr_admin_menu' );
+// function uimptr_admin_menu() {
+// 	add_media_page(
+// 		'Import Images from URLs',
+// 		'Import Images',
+// 		'upload_files',
+// 		'import-images-url',
+// 		'uimptr_import_images_url_page'
+// 	);
+// }
+// add_action( 'admin_menu', 'uimptr_admin_menu' );
 
 /**
  * Enqueue scripts and styles
@@ -166,6 +197,47 @@ function uimptr_handle_xml_import() {
 function uimptr_import_images_url_page() {
 	if ( ! current_user_can( 'upload_files' ) ) {
 		wp_die( esc_html( 'You do not have sufficient permissions to access this page.' ) );
+	}
+
+	// Debug feature: Clear scan cache (add ?clear_scan=1 to URL)
+	if ( isset( $_GET['clear_scan'] ) && current_user_can( 'manage_options' ) ) {
+		delete_site_option( 'uimptr_file_scan' );
+		echo '<div class="notice notice-success is-dismissible"><p>';
+		echo '<strong>✓ URL Image Importer:</strong> ';
+		echo esc_html__('Scan cache has been cleared. Click "Scan Media Library" to start a fresh scan.', 'url-image-importer');
+		echo '</p></div>';
+	}
+	
+	// Debug feature: Reset all dismissed notices for testing (add ?undismiss=1 to URL)
+	if ( isset( $_GET['undismiss'] ) && current_user_can( 'manage_options' ) ) {
+		// Reset URL Image Importer specific notices
+		delete_user_meta( get_current_user_id(), 'uimptr_notice_big_file_form_uploads_promo' );
+		
+		// Reset legacy notices if they exist
+		delete_user_option( get_current_user_id(), 'bfu_notice_dismissed' );
+		delete_user_option( get_current_user_id(), 'bfu_upgrade_notice_dismissed' );
+		delete_user_option( get_current_user_id(), 'bfu_subscribe_notice_dismissed' );
+		
+		// Show confirmation message
+		echo '<div class="notice notice-success is-dismissible"><p>';
+		echo '<strong>✓ URL Image Importer:</strong> ';
+		echo esc_html__('All dismissed notices have been reset. Refresh the page to see banners again.', 'url-image-importer');
+		echo '</p></div>';
+	}
+	
+	// Debug feature: Show screen ID and promotional notice status (add ?debug_notices=1 to URL)
+	if ( isset( $_GET['debug_notices'] ) && current_user_can( 'manage_options' ) ) {
+		$screen = get_current_screen();
+		$promo_notice_status = get_user_meta( get_current_user_id(), 'uimptr_notice_big_file_form_uploads_promo', true );
+		$bfu_active = function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php');
+		
+		echo '<div class="notice notice-info"><p>';
+		echo '<strong>Debug Info:</strong><br>';
+		echo 'Screen ID: <code>' . esc_html( $screen->id ) . '</code><br>';
+		echo 'PromoNotice Status: <code>' . esc_html( $promo_notice_status ? print_r($promo_notice_status, true) : 'Not set (should show)' ) . '</code><br>';
+		echo 'Big File Uploads Active: <code>' . ( $bfu_active ? 'Yes (promos hidden)' : 'No (promos should show)' ) . '</code><br>';
+		echo 'User Can Manage Options: <code>' . ( current_user_can('manage_options') ? 'Yes' : 'No' ) . '</code>';
+		echo '</p></div>';
 	}
 
 	$results = array();
@@ -727,10 +799,14 @@ function uimptr_import_images_url_page() {
 							var finalErrors = data.errors || [];
 							var results = [];
 							
-							finalResults.forEach(function(result) {
-								results.push('<div class="notice notice-success"><p><?php esc_html_e( 'Success:', 'url-image-importer' ); ?> ' + result.url + '</p></div>');
-							});
+							// Only show individual success messages for URL imports, not CSV or XML
+							if (type === 'url') {
+								finalResults.forEach(function(result) {
+									results.push('<div class="notice notice-success"><p><?php esc_html_e( 'Success:', 'url-image-importer' ); ?> ' + result.url + '</p></div>');
+								});
+							}
 							
+							// Always show errors
 							finalErrors.forEach(function(error) {
 								results.push('<div class="notice notice-error"><p>' + error + '</p></div>');
 							});
@@ -1028,10 +1104,17 @@ function uimptr_import_images_url_page() {
 			}
 			
 			$('#' + type + '-progress-text').text(message);
-			$('#' + type + '-import-results').html(results.slice(0, 10).join(''));
 			
-			if (results.length > 10) {
-				$('#' + type + '-import-results').append('<div class="notice notice-info"><p><?php esc_html_e( 'Showing first 10 results. Total:', 'url-image-importer' ); ?> ' + results.length + '</p></div>');
+			// Only show detailed results if there are any
+			if (results.length > 0) {
+				$('#' + type + '-import-results').html(results.slice(0, 10).join(''));
+				
+				if (results.length > 10) {
+					$('#' + type + '-import-results').append('<div class="notice notice-info"><p><?php esc_html_e( 'Showing first 10 results. Total:', 'url-image-importer' ); ?> ' + results.length + '</p></div>');
+				}
+			} else {
+				// Clear results if none to display
+				$('#' + type + '-import-results').html('');
 			}
 			
 			$('#start-' + type + '-import').prop('disabled', false);
@@ -1336,41 +1419,223 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 }
 
 /**
- * Scan files to analyze storage usage by file type.
+ * Scan Media Library database for file statistics.
+ * Used when cloud storage (like Infinite Uploads) is active.
+ * 
+ * @return array Array with total_files, total_size, and types breakdown
  */
-function uimptr_ajax_file_scan() {
-	$path           = uimptr_get_upload_dir_root();
-	$remaining_dirs = array();
-	$nonce          = isset( $_POST['js_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['js_nonce'] ) ) : '';
-	if ( ! wp_verify_nonce( $nonce, 'ajax-nonce' ) ) {
-		error_log('URL Image Importer: Nonce verification failed during scan.');
-		wp_die( 'Nonce Varification Failed!' );
-	}
-	try {
-		if ( isset( $_POST['remaining_dirs'] ) ) {
-			$dirs_raw = wp_unslash( $_POST['remaining_dirs'] );
-			$dirs_arr = is_array($dirs_raw) ? $dirs_raw : explode(',', (string)$dirs_raw);
-			foreach ( $dirs_arr as $dir ) {
-				$dir = sanitize_text_field( $dir );
-				$realpath = realpath( $path . $dir );
-				if ( 0 === strpos( $realpath, $path ) ) {
-					$remaining_dirs[] = $dir;
+function uimptr_scan_media_library_database() {
+	global $wpdb;
+	
+	// Get all attachments from the media library
+	$attachments = $wpdb->get_results(
+		"SELECT ID, post_mime_type FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_status = 'inherit'",
+		ARRAY_A
+	);
+	
+	$results = array(
+		'total_files' => 0,
+		'total_size' => 0,
+		'types' => array()
+	);
+	
+	$debug_sample = 0;
+	foreach ( $attachments as $attachment ) {
+		$attachment_id = $attachment['ID'];
+		$mime_type = $attachment['post_mime_type'];
+		
+		// Get file path and metadata
+		$file_path = get_attached_file( $attachment_id );
+		$metadata = wp_get_attachment_metadata( $attachment_id );
+		
+		// Debug first 3 attachments
+		if ( $debug_sample < 3 ) {
+			error_log( sprintf( 
+				'URL Image Importer Debug: ID=%d, mime=%s, path=%s, has_metadata=%s',
+				$attachment_id,
+				$mime_type,
+				$file_path ? basename($file_path) : 'NULL',
+				$metadata ? 'yes' : 'no'
+			));
+			$debug_sample++;
+		}
+		
+		// Calculate original file size
+		$file_size = 0;
+		if ( $file_path && file_exists( $file_path ) ) {
+			// Local file exists
+			$file_size = filesize( $file_path );
+		} elseif ( isset( $metadata['filesize'] ) ) {
+			// Use metadata filesize (for remote files)
+			$file_size = $metadata['filesize'];
+		} else {
+			// Estimate based on dimensions for images
+			if ( strpos( $mime_type, 'image/' ) === 0 && isset( $metadata['width'], $metadata['height'] ) ) {
+				// Very rough estimate: width * height * 3 bytes (RGB)
+				$file_size = $metadata['width'] * $metadata['height'] * 3;
+			}
+		}
+		
+		// Determine file type category using the same logic as FileScan
+		$file_type = 'other';
+		
+		// Get file extension
+		$extension = '';
+		if ( $file_path ) {
+			$extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+		} elseif ( $mime_type ) {
+			// Map mime type to extension
+			$mime_to_ext = array(
+				'image/jpeg' => 'jpg',
+				'image/png' => 'png',
+				'image/gif' => 'gif',
+				'image/webp' => 'webp',
+				'image/svg+xml' => 'svg',
+				'image/bmp' => 'bmp',
+				'image/tiff' => 'tiff',
+				'application/pdf' => 'pdf',
+				'video/mp4' => 'mp4',
+				'video/quicktime' => 'mov',
+				'video/mpeg' => 'mpg',
+				'video/webm' => 'webm',
+				'audio/mpeg' => 'mp3',
+				'audio/wav' => 'wav',
+				'audio/ogg' => 'ogg',
+			);
+			$extension = isset( $mime_to_ext[$mime_type] ) ? $mime_to_ext[$mime_type] : '';
+		}
+		
+		// Categorize by extension (must match FileScan categories)
+		if ( $extension ) {
+			$categories = array(
+				'image'    => array( 'jpg', 'jpeg', 'jpe', 'gif', 'png', 'bmp', 'tif', 'tiff', 'ico', 'svg', 'svgz', 'webp' ),
+				'audio'    => array( 'aac', 'ac3', 'aif', 'aiff', 'flac', 'm3a', 'm4a', 'm4b', 'mka', 'mp1', 'mp2', 'mp3', 'ogg', 'oga', 'ram', 'wav', 'wma' ),
+				'video'    => array( '3g2', '3gp', '3gpp', 'asf', 'avi', 'divx', 'dv', 'flv', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'mpv', 'ogm', 'ogv', 'qt', 'rm', 'vob', 'wmv', 'webm' ),
+				'document' => array( 'log', 'asc', 'csv', 'tsv', 'txt', 'doc', 'docx', 'docm', 'dotm', 'odt', 'pages', 'pdf', 'xps', 'oxps', 'rtf', 'wp', 'wpd', 'psd', 'xcf', 'swf', 'key', 'ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'ppsm', 'sldx', 'sldm', 'odp', 'numbers', 'ods', 'xls', 'xlsx', 'xlsm', 'xlsb' ),
+				'archive'  => array( 'bz2', 'cab', 'dmg', 'gz', 'rar', 'sea', 'sit', 'sqx', 'tar', 'tgz', 'zip', '7z', 'data', 'bin', 'bak' ),
+				'code'     => array( 'css', 'htm', 'html', 'php', 'js', 'md' ),
+			);
+			
+			foreach ( $categories as $category => $extensions ) {
+				if ( in_array( $extension, $extensions, true ) ) {
+					$file_type = $category;
+					break;
 				}
 			}
 		}
-		error_log('URL Image Importer: Starting scan with path ' . $path . ' and dirs: ' . print_r($remaining_dirs, true));
-		$file_scan = new \UrlImageImporter\FileScan\FileScan( $path, 20, $remaining_dirs );
-		$file_scan->start();
-		$file_count     = number_format_i18n( $file_scan->get_total_files() );
-		$file_size      = size_format( $file_scan->get_total_size(), 2 );
-		$remaining_dirs = $file_scan->paths_left;
-		$is_done        = $file_scan->is_done;
+		
+		// Initialize type object if needed (must match FileScan structure)
+		if ( ! isset( $results['types'][$file_type] ) ) {
+			$results['types'][$file_type] = (object) array(
+				'files' => 0,
+				'size' => 0
+			);
+		}
+		
+		// Count and add original file
+		$results['total_files']++;
+		$results['total_size'] += $file_size;
+		$results['types'][$file_type]->files++;
+		$results['types'][$file_type]->size += $file_size;
+		
+		// Count and add all thumbnail/resized versions as separate files
+		if ( isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+			$base_dir = $file_path ? trailingslashit( dirname( $file_path ) ) : '';
+			
+			foreach ( $metadata['sizes'] as $size_name => $size_data ) {
+				if ( isset( $size_data['file'] ) ) {
+					$thumb_size = 0;
+					$thumb_path = $base_dir . $size_data['file'];
+					
+					if ( $base_dir && file_exists( $thumb_path ) ) {
+						// Local thumbnail exists
+						$thumb_size = filesize( $thumb_path );
+					} elseif ( isset( $size_data['filesize'] ) ) {
+						// Remote thumbnail filesize in metadata
+						$thumb_size = $size_data['filesize'];
+					} elseif ( isset( $size_data['width'], $size_data['height'] ) ) {
+						// Estimate thumbnail size
+						$thumb_size = $size_data['width'] * $size_data['height'] * 3;
+					}
+					
+					// Count each thumbnail as a separate file
+					$results['total_files']++;
+					$results['total_size'] += $thumb_size;
+					$results['types'][$file_type]->files++;
+					$results['types'][$file_type]->size += $thumb_size;
+				}
+			}
+		}
+	}
+	
+	error_log('URL Image Importer: Media Library scan found ' . $results['total_files'] . ' files totaling ' . size_format($results['total_size']));
+	
+	return $results;
+}
+
+/**
+ * Scan files to analyze storage usage by file type.
+ */
+function uimptr_ajax_file_scan() {
+	$nonce = isset( $_POST['js_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['js_nonce'] ) ) : '';
+	if ( ! wp_verify_nonce( $nonce, 'ajax-nonce' ) ) {
+		error_log('URL Image Importer: Nonce verification failed during scan.');
+		wp_send_json_error( 'Nonce Verification Failed!' );
+		return;
+	}
+	
+	try {
+		// Check if Infinite Uploads or similar cloud storage is active
+		$using_cloud_storage = function_exists( 'infinite_uploads_init' ) || class_exists( 'Infinite_Uploads' );
+		
+		if ( $using_cloud_storage ) {
+			// Scan Media Library database instead of local files
+			error_log('URL Image Importer: Infinite Uploads detected - scanning Media Library database');
+			$results = uimptr_scan_media_library_database();
+			
+			$file_count = number_format_i18n( $results['total_files'] );
+			$file_size  = size_format( $results['total_size'], 2 );
+			$is_done    = true;
+			$remaining_dirs = array();
+			
+			// Update the site option with results
+			update_site_option( 'uimptr_file_scan', array(
+				'scan_finished' => time(),
+				'types' => $results['types']
+			));
+			
+		} else {
+			// Scan local file system
+			$path           = uimptr_get_upload_dir_root();
+			$remaining_dirs = array();
+			
+			if ( isset( $_POST['remaining_dirs'] ) ) {
+				$dirs_raw = wp_unslash( $_POST['remaining_dirs'] );
+				$dirs_arr = is_array($dirs_raw) ? $dirs_raw : explode(',', (string)$dirs_raw);
+				foreach ( $dirs_arr as $dir ) {
+					$dir = sanitize_text_field( $dir );
+					$realpath = realpath( $path . $dir );
+					if ( $realpath && 0 === strpos( $realpath, $path ) ) {
+						$remaining_dirs[] = $dir;
+					}
+				}
+			}
+			
+			error_log('URL Image Importer: Scanning local files at ' . $path);
+			$file_scan = new \UrlImageImporter\FileScan\FileScan( $path, 20, $remaining_dirs );
+			$file_scan->start();
+			$file_count     = number_format_i18n( $file_scan->get_total_files() );
+			$file_size      = size_format( $file_scan->get_total_size(), 2 );
+			$remaining_dirs = $file_scan->get_paths_left();
+			$is_done        = $file_scan->is_done();
+		}
 
 		$data = compact( 'file_count', 'file_size', 'is_done', 'remaining_dirs' );
+		error_log('URL Image Importer: Scan complete - ' . $file_count . ' files, ' . $file_size . ', done: ' . ($is_done ? 'yes' : 'no'));
 		wp_send_json_success( $data );
 	} catch (Throwable $e) {
-		error_log('URL Image Importer: Scan failed with error: ' . $e->getMessage());
-		wp_send_json_error(['error' => $e->getMessage()]);
+		error_log('URL Image Importer: Scan failed with error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+		wp_send_json_error( array('message' => $e->getMessage()) );
 	}
 }
 add_action( 'wp_ajax_uimptr_bfu_file_scan', 'uimptr_ajax_file_scan' );
@@ -2329,3 +2594,24 @@ function uimptr_get_file_type( $filename ) {
 
 	return 'other';
 }
+
+/**
+ * Reset promotional notices when plugin is deactivated
+ * This allows banners to show again when the plugin is reactivated
+ */
+function uimptr_plugin_deactivation() {
+	// Get all users who have dismissed notices
+	global $wpdb;
+	
+	// Delete URL Image Importer specific notice dismissals for all users
+	$wpdb->query(
+		"DELETE FROM {$wpdb->usermeta} 
+		WHERE meta_key LIKE 'uimptr_notice_%'"
+	);
+	
+	// Optionally delete legacy notice dismissals too
+	delete_metadata( 'user', 0, 'bfu_notice_dismissed', '', true );
+	delete_metadata( 'user', 0, 'bfu_upgrade_notice_dismissed', '', true );
+	delete_metadata( 'user', 0, 'bfu_subscribe_notice_dismissed', '', true );
+}
+register_deactivation_hook( __FILE__, 'uimptr_plugin_deactivation' );

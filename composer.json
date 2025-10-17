@@ -7,7 +7,9 @@
             "UrlImageImporter\\Core\\": "src/Core/",
             "UrlImageImporter\\FileScan\\": "src/FileScan/",
             "UrlImageImporter\\Admin\\": "src/Admin/",
-            "UrlImageImporter\\Importer\\": "src/Importer/"
+            "UrlImageImporter\\Importer\\": "src/Importer/",
+            "UrlImageImporter\\Ajax\\": "src/Ajax/",
+            "UrlImageImporter\\Utils\\": "src/Utils/"
         }
     },
     "require": {}

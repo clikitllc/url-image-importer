@@ -29,15 +29,16 @@ class UiBigFileUploadsFileScan {
     public function start() {
         $this->start_time = microtime( true );
         if ( empty( $this->paths_left ) ) {
-            update_site_option(
-                'uimptr_file_scan',
-                array(
-                    'scan_finished' => false,
-                    'types'         => array(),
-                )
+            // Starting a fresh scan - reset all data
+            $this->type_list = array(
+                'scan_finished' => false,
+                'types'         => array(),
             );
+            update_site_option( 'uimptr_file_scan', $this->type_list );
         } else {
-            $this->type_list = get_site_option( 'uimptr_file_scan' );
+            // Continuing an existing scan - load cached data
+            $cached = get_site_option( 'uimptr_file_scan' );
+            $this->type_list = is_array( $cached ) ? $cached : array( 'types' => array() );
         }
         $this->get_files();
         $this->flush_to_db();
@@ -68,7 +69,7 @@ class UiBigFileUploadsFileScan {
         $paths = ( empty( $this->paths_left ) ) ? array( $this->root_path ) : $this->paths_left;
         while ( ! empty( $paths ) ) {
             $path = array_pop( $paths );
-            if ( preg_match( '/\..([\/\\]|$)/', $path ) ) {
+            if ( preg_match( '/\.\.(\/|\\\\|$)/', $path ) ) {
                 continue;
             }
             if ( 0 !== strpos( $path, $this->root_path ) ) {

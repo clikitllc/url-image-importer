@@ -6,8 +6,10 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'UrlImageImporter\\Utils\\' => array($baseDir . '/src/Utils'),
     'UrlImageImporter\\Importer\\' => array($baseDir . '/src/Importer'),
     'UrlImageImporter\\FileScan\\' => array($baseDir . '/src/FileScan'),
     'UrlImageImporter\\Core\\' => array($baseDir . '/src/Core'),
+    'UrlImageImporter\\Ajax\\' => array($baseDir . '/src/Ajax'),
     'UrlImageImporter\\Admin\\' => array($baseDir . '/src/Admin'),
 );

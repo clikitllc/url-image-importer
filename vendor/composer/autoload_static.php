@@ -9,14 +9,20 @@ class ComposerStaticInita09d309a3d43413883f0e79ad64274e2
     public static $prefixLengthsPsr4 = array (
         'U' => 
         array (
+            'UrlImageImporter\\Utils\\' => 23,
             'UrlImageImporter\\Importer\\' => 26,
             'UrlImageImporter\\FileScan\\' => 26,
             'UrlImageImporter\\Core\\' => 22,
+            'UrlImageImporter\\Ajax\\' => 22,
             'UrlImageImporter\\Admin\\' => 23,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'UrlImageImporter\\Utils\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/Utils',
+        ),
         'UrlImageImporter\\Importer\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src/Importer',
@@ -28,6 +34,10 @@ class ComposerStaticInita09d309a3d43413883f0e79ad64274e2
         'UrlImageImporter\\Core\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src/Core',
+        ),
+        'UrlImageImporter\\Ajax\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src/Ajax',
         ),
         'UrlImageImporter\\Admin\\' => 
         array (

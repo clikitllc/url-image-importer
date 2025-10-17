@@ -103,7 +103,7 @@ class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFile
 			$path = array_pop( $paths );
 
 			// Skip ".." items.
-			if ( preg_match( '/\.\.([\/\\\\]|$)/', $path ) ) {
+			if ( preg_match( '/\.\.(\/|\\\\|$)/', $path ) ) {
 				continue;
 			}
 

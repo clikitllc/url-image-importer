@@ -104,12 +104,9 @@ class Plugin {
 	 * Register AJAX handlers.
 	 */
 	private function register_ajax_handlers() {
-		\add_action( 'wp_ajax_uimptr_bfu_file_scan', array( $this, 'ajax_file_scan' ) );
-		\add_action( 'wp_ajax_uimptr_subscribe_dismiss', array( $this, 'ajax_subscribe_dismiss' ) );
-		\add_action( 'wp_ajax_uimptr_start_xml_import', array( $this, 'ajax_start_xml_import' ) );
-		\add_action( 'wp_ajax_uimptr_get_import_progress', array( $this, 'ajax_get_import_progress' ) );
-		\add_action( 'wp_ajax_uimptr_stop_import', array( $this, 'ajax_stop_import' ) );
-		\add_action( 'wp_ajax_uimptr_start_csv_import', array( $this, 'ajax_start_csv_import' ) );
+		// AJAX handlers are registered in url-image-importer.php (procedural code)
+		// Not registering duplicate actions to avoid conflicts
+		// Plugin class methods are kept for backward compatibility but not hooked
 	}
 
 	/**

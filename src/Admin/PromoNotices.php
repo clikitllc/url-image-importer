@@ -42,8 +42,9 @@ class PromoNotices {
 		add_action( 'admin_notices', array( $this, 'display_notices' ) );
 		add_action( 'wp_ajax_uimptr_handle_promo_action', array( $this, 'handle_promo_action' ) );
         
-        // Initialize promotional notices after WordPress is ready for translations
-        add_action( 'init', array( $this, 'init_notices' ) );
+        // Initialize promotional notices immediately
+        // Note: Translations will still work as they're loaded early enough
+        $this->init_notices();
 	}
 
     /**
@@ -61,7 +62,7 @@ class PromoNotices {
                 'primary' => [
                     'text' => __('Learn More & Get Big File Form Uploads', 'url-image-importer'),
                     'action' => 'link',
-                    'link' => 'https://infiniteuploads.com/big-file-uploads/',
+                    'link' => 'https://infiniteuploads.com/big-file-form-uploads/',
                     'type' => 'primary'
                 ],
                 'maybe_later' => [
@@ -74,6 +75,11 @@ class PromoNotices {
                 ]
             ]
         ]);
+        
+        // Debug: Log that notice was added
+        if ( isset( $_GET['debug_notices'] ) && current_user_can( 'manage_options' ) ) {
+            error_log( 'PromoNotices: Added notice. Total notices: ' . count( $this->notices ) );
+        }
     }
 
     /**
@@ -125,8 +131,24 @@ class PromoNotices {
 
         // Only show on relevant admin pages
         $screen = get_current_screen();
+        
+        // Debug mode: Show why notices aren't appearing
+        if ( isset( $_GET['debug_notices'] ) && current_user_can( 'manage_options' ) ) {
+            echo '<div class="notice notice-info"><p>';
+            echo '<strong>PromoNotices Debug:</strong><br>';
+            echo 'Current Screen ID: <code>' . esc_html( $screen ? $screen->id : 'NULL' ) . '</code><br>';
+            echo 'Allowed Screen IDs: <code>media_page_import-images-url, plugins, dashboard</code><br>';
+            echo 'Total Notices Registered: <code>' . count( $this->notices ) . '</code><br>';
+            if ( $screen && in_array( $screen->id, ['media_page_import-images-url', 'plugins', 'dashboard'] ) ) {
+                echo '✓ Screen ID matches!<br>';
+            } else {
+                echo '✗ Screen ID does NOT match<br>';
+            }
+            echo '</p></div>';
+        }
+        
         if ( ! $screen || ! in_array( $screen->id, [
-            'media_page_url-image-importer',
+            'media_page_import-images-url',  // Correct screen ID for URL Image Importer
             'plugins',
             'dashboard'
         ] ) ) {
