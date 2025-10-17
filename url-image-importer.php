@@ -390,7 +390,7 @@ function uimptr_import_images_url_page() {
 							<p><?php esc_html_e( 'Upload a WordPress XML export file to import images from another WordPress site.', 'url-image-importer' ); ?></p>
 							<input type="file" name="xml_file" id="xml_file" accept=".xml" required />
 							<p class="description">
-								<?php esc_html_e( 'Select a .xml file exported from WordPress (Tools → Export → All content).', 'url-image-importer' ); ?>
+								<?php esc_html_e( 'Select a .xml file exported from WordPress (Tools → Export → Media).', 'url-image-importer' ); ?>
 							</p>
 						</div>
 					</div>
