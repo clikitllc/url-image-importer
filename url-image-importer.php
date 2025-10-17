@@ -1897,8 +1897,15 @@ function uimptr_ajax_batch_import() {
 		}
 		
 		// Check if file already exists (unless force_reimport is enabled)
-		$filename = basename( parse_url( $url, PHP_URL_PATH ) );
-		if ( uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+		// Extract filename and remove query parameters
+		$url_path = parse_url( $url, PHP_URL_PATH );
+		$filename = $url_path ? basename( $url_path ) : '';
+		
+		// Clean filename - remove query strings that might have been included
+		$filename = preg_replace( '/\?.*$/', '', $filename );
+		
+		if ( !empty( $filename ) && uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+			error_log( "URL Image Importer: Skipping existing file: {$filename} from URL: {$url}" );
 			$batch_skipped++;
 			continue;
 		}
@@ -2068,8 +2075,14 @@ function uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates = f
 		}
 		
 		// Skip if already exists (unless force_reimport is enabled)
-		$filename = basename( parse_url( $attachment_url, PHP_URL_PATH ) );
-		if ( uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+		$url_path = parse_url( $attachment_url, PHP_URL_PATH );
+		$filename = $url_path ? basename( $url_path ) : '';
+		
+		// Clean filename - remove query strings that might have been included
+		$filename = preg_replace( '/\?.*$/', '', $filename );
+		
+		if ( !empty( $filename ) && uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+			error_log( "URL Image Importer: Skipping existing XML file: {$filename} from URL: {$attachment_url}" );
 			continue;
 		}
 		
@@ -2194,8 +2207,14 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 		}
 		
 		// Skip if already exists (unless force_reimport is enabled)
-		$filename = basename( parse_url( $url, PHP_URL_PATH ) );
-		if ( uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+		$url_path = parse_url( $url, PHP_URL_PATH );
+		$filename = $url_path ? basename( $url_path ) : '';
+		
+		// Clean filename - remove query strings that might have been included
+		$filename = preg_replace( '/\?.*$/', '', $filename );
+		
+		if ( !empty( $filename ) && uimptr_attachment_exists( $filename ) && !$force_reimport ) {
+			error_log( "URL Image Importer: Skipping existing CSV file: {$filename} from URL: {$url}" );
 			continue;
 		}
 		
@@ -2267,14 +2286,44 @@ function uimptr_is_image_url( $url ) {
 }
 
 /**
- * Check if attachment already exists
+ * Check if attachment already exists by filename
+ * Checks both the _wp_attached_file meta and the guid field
  */
 function uimptr_attachment_exists( $filename ) {
+	if ( empty( $filename ) ) {
+		return false;
+	}
+	
 	global $wpdb;
-	$result = $wpdb->get_var( $wpdb->prepare(
-		"SELECT ID FROM {$wpdb->posts} WHERE post_type = 'attachment' AND guid LIKE %s",
+	
+	// First, try to find by _wp_attached_file meta (most reliable)
+	$meta_query = $wpdb->prepare(
+		"SELECT post_id FROM {$wpdb->postmeta} pm
+		INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+		WHERE pm.meta_key = '_wp_attached_file' 
+		AND pm.meta_value LIKE %s
+		AND p.post_type = 'attachment'
+		LIMIT 1",
 		'%' . $wpdb->esc_like( $filename )
-	) );
+	);
+	
+	$result = $wpdb->get_var( $meta_query );
+	
+	if ( $result ) {
+		return true;
+	}
+	
+	// Fallback: check guid field (less reliable but catches some cases)
+	$guid_query = $wpdb->prepare(
+		"SELECT ID FROM {$wpdb->posts} 
+		WHERE post_type = 'attachment' 
+		AND guid LIKE %s
+		LIMIT 1",
+		'%/' . $wpdb->esc_like( $filename )
+	);
+	
+	$result = $wpdb->get_var( $guid_query );
+	
 	return !empty( $result );
 }
 
