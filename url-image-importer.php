@@ -1713,8 +1713,16 @@ function uimptr_ajax_process_xml_import() {
 	// Check if we should preserve dates
 	$preserve_dates = isset( $_POST['xml_preserve_dates'] ) && $_POST['xml_preserve_dates'];
 	
+	// Check if we should force reimport (same logic as batch import)
+	$force_reimport = isset( $_POST['force_reimport'] ) && ( 
+		$_POST['force_reimport'] === 'true' || 
+		$_POST['force_reimport'] === '1' || 
+		$_POST['force_reimport'] === 1 || 
+		$_POST['force_reimport'] === true 
+	);
+	
 	// Parse XML and extract URLs from content
-	$urls_data = uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates );
+	$urls_data = uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates, $force_reimport );
 	
 	if ( is_wp_error( $urls_data ) ) {
 		// Clean up temp file on error
@@ -1780,8 +1788,16 @@ function uimptr_ajax_process_csv_import() {
 	// Check if we should preserve dates
 	$preserve_dates = isset( $_POST['csv_preserve_dates'] ) && $_POST['csv_preserve_dates'];
 	
+	// Check if we should force reimport (same logic as batch import)
+	$force_reimport = isset( $_POST['force_reimport'] ) && ( 
+		$_POST['force_reimport'] === 'true' || 
+		$_POST['force_reimport'] === '1' || 
+		$_POST['force_reimport'] === 1 || 
+		$_POST['force_reimport'] === true 
+	);
+	
 	// Parse CSV and extract URLs from content
-	$urls_data = uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates );
+	$urls_data = uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates, $force_reimport );
 	
 	if ( is_wp_error( $urls_data ) ) {
 		// Clean up temp file on error
@@ -1988,7 +2004,7 @@ add_action( 'wp_ajax_uimptr_cancel_import', 'uimptr_ajax_cancel_import' );
 /**
  * Extract URLs and metadata from XML content
  */
-function uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates = false ) {
+function uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates = false, $force_reimport = false ) {
 	if ( empty( $xml_content ) ) {
 		return new WP_Error( 'empty_content', 'XML content is empty' );
 	}
@@ -2051,9 +2067,9 @@ function uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates = f
 			continue;
 		}
 		
-		// Skip if already exists (unless force_reimport is checked)
+		// Skip if already exists (unless force_reimport is enabled)
 		$filename = basename( parse_url( $attachment_url, PHP_URL_PATH ) );
-		if ( uimptr_attachment_exists( $filename ) && !isset( $_POST['force_reimport'] ) ) {
+		if ( uimptr_attachment_exists( $filename ) && !$force_reimport ) {
 			continue;
 		}
 		
@@ -2125,7 +2141,7 @@ function uimptr_extract_urls_from_xml( $xml_file_path ) {
 /**
  * Extract URLs and metadata from CSV content
  */
-function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = false ) {
+function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = false, $force_reimport = false ) {
 	if ( empty( $csv_content ) ) {
 		return new WP_Error( 'empty_content', 'CSV content is empty' );
 	}
@@ -2177,9 +2193,9 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 			continue;
 		}
 		
-		// Skip if already exists (unless force_reimport is checked)
+		// Skip if already exists (unless force_reimport is enabled)
 		$filename = basename( parse_url( $url, PHP_URL_PATH ) );
-		if ( uimptr_attachment_exists( $filename ) && !isset( $_POST['force_reimport'] ) ) {
+		if ( uimptr_attachment_exists( $filename ) && !$force_reimport ) {
 			continue;
 		}
 		
