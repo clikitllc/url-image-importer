@@ -3,7 +3,7 @@ Contributors: bww
 Tags: import image, image import, import image to media library, media library
 Requires at least: 5.3
 Tested up to: 6.7.1
-Stable tag: 1.0.3
+Stable tag: 1.0.6
 Requires PHP: 7.4
 License: GPLv2 or higher
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -100,8 +100,15 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 
 == Changelog ==
 
-1.0 - 1/23/2025
-----------------------------------------------------------------------
+= 1.0.6 - 10/17/2025 =
+- Added PSR-4 autoloading with Composer for improved code organization
+- Added CSV import functionality for batch image imports
+- Added WordPress XML export file import support
+- Improved batch import UI - removed individual success messages for cleaner CSV/XML imports
+- Added namespace support: UrlImageImporter\Core, \Admin, \FileScan, \Importer, \Ajax, \Utils
+- Code quality improvements and bug fixes
+
+= 1.0 - 1/23/2025 =
 - Initial release
 
 == About Us ==

@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Lists files using a Breadth-First search algorithm to allow for time limits and resume across multiple requests.
  */
-class Ui_Big_File_Uploads_File_Scan {
+// Legacy wrapper for PSR-4 migration. Use UrlImageImporter\FileScan\UiBigFileUploadsFileScan instead.
+class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFileUploadsFileScan {
 
 	/**
 	 *  Scan file flag.
@@ -94,7 +95,7 @@ class Ui_Big_File_Uploads_File_Scan {
 		$this->root_path  = rtrim( $root_path, '/' );
 		$this->timeout    = $timeout;
 		$this->paths_left = $paths_left;
-		$this->instance   = UrlBigFileUploads::get_instance();
+	$this->instance   = null; // BigFileUploads dependency removed
 	}
 
 	/**
@@ -168,7 +169,7 @@ class Ui_Big_File_Uploads_File_Scan {
 			$path = array_pop( $paths );
 
 			// Skip ".." items.
-			if ( preg_match( '/\.\.([\/\\\\]|$)/', $path ) ) {
+			if ( preg_match( '/\.\.(\/|\\\\|$)/', $path ) ) {
 				continue;
 			}
 
@@ -242,7 +243,7 @@ class Ui_Big_File_Uploads_File_Scan {
 	protected function get_file_info( $item ) {
 		$file         = array();
 		$file['size'] = filesize( $item );
-		$file['type'] = $this->instance->get_file_type( $item );
+	$file['type'] = is_object($this->instance) && method_exists($this->instance, 'get_file_type') ? $this->instance->get_file_type( $item ) : 'other';
 
 		if ( empty( $file['size'] ) ) {
 			return false;
