@@ -362,7 +362,10 @@ function uimptr_import_images_url_page() {
 						<div class="progress-stats" style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 14px;">
 							<span style="color: #28a745; margin-right: 15px;"><strong>✓ Success:</strong> <span id="url-success-count">0</span></span>
 							<span style="color: #dc3545; margin-right: 15px;"><strong>✗ Failed:</strong> <span id="url-failed-count">0</span></span>
-							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="url-skipped-count">0</span></span>
+							<span style="color: #6c757d;" title="<?php esc_attr_e( 'Files may be skipped if: 1) File already exists in Media Library (unless Force Reimport is checked), 2) URL is empty or invalid, 3) Not an image when Images Only is selected', 'url-image-importer' ); ?>">
+								<strong>⊘ Skipped:</strong> <span id="url-skipped-count">0</span>
+								<span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle; cursor: help;"></span>
+							</span>
 						</div>
 						<div class="progress-actions">
 							<button type="button" id="cancel-url-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
@@ -431,7 +434,10 @@ function uimptr_import_images_url_page() {
 						<div class="progress-stats" style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 14px;">
 							<span style="color: #28a745; margin-right: 15px;"><strong>✓ Success:</strong> <span id="xml-success-count">0</span></span>
 							<span style="color: #dc3545; margin-right: 15px;"><strong>✗ Failed:</strong> <span id="xml-failed-count">0</span></span>
-							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="xml-skipped-count">0</span></span>
+							<span style="color: #6c757d;" title="<?php esc_attr_e( 'Files may be skipped if: 1) File already exists in Media Library (unless Force Reimport is checked), 2) URL is empty or invalid, 3) Not an image when Images Only is selected', 'url-image-importer' ); ?>">
+								<strong>⊘ Skipped:</strong> <span id="xml-skipped-count">0</span>
+								<span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle; cursor: help;"></span>
+							</span>
 						</div>
 						<div class="progress-actions">
 							<button type="button" id="cancel-xml-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
@@ -507,7 +513,10 @@ function uimptr_import_images_url_page() {
 						<div class="progress-stats" style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 4px; font-size: 14px;">
 							<span style="color: #28a745; margin-right: 15px;"><strong>✓ Success:</strong> <span id="csv-success-count">0</span></span>
 							<span style="color: #dc3545; margin-right: 15px;"><strong>✗ Failed:</strong> <span id="csv-failed-count">0</span></span>
-							<span style="color: #6c757d;"><strong>⊘ Skipped:</strong> <span id="csv-skipped-count">0</span></span>
+							<span style="color: #6c757d;" title="<?php esc_attr_e( 'Files may be skipped if: 1) File already exists in Media Library (unless Force Reimport is checked), 2) URL is empty or invalid, 3) Not an image when Images Only is selected', 'url-image-importer' ); ?>">
+								<strong>⊘ Skipped:</strong> <span id="csv-skipped-count">0</span>
+								<span class="dashicons dashicons-info" style="font-size: 16px; vertical-align: middle; cursor: help;"></span>
+							</span>
 						</div>
 						<div class="progress-actions">
 							<button type="button" id="cancel-csv-import" class="btn text-nowrap btn-primary btn-lg" title="<?php esc_attr_e( 'Stop the import process immediately', 'url-image-importer' ); ?>"><?php esc_html_e( 'Stop Import', 'url-image-importer' ); ?></button>
