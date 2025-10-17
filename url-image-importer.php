@@ -1816,13 +1816,18 @@ function uimptr_ajax_batch_import() {
 	$start_index = intval( $_POST['start_index'] ?? 0 );
 	$batch_size = intval( $_POST['batch_size'] ?? 5 ); // Process 5 URLs at a time
 	$urls = json_decode( stripslashes( $_POST['urls'] ?? '[]' ), true );
-	$preserve_dates = isset( $_POST['preserve_dates'] ) && $_POST['preserve_dates'] === 'true';
-	$force_reimport = isset( $_POST['force_reimport'] ) && $_POST['force_reimport'] === 'true';
+	$preserve_dates = isset( $_POST['preserve_dates'] ) && ( $_POST['preserve_dates'] === 'true' || $_POST['preserve_dates'] === '1' || $_POST['preserve_dates'] === true );
+	// Handle force_reimport: could be boolean true, string "true", "1", or checkbox value "1"
+	$force_reimport = isset( $_POST['force_reimport'] ) && ( 
+		$_POST['force_reimport'] === 'true' || 
+		$_POST['force_reimport'] === '1' || 
+		$_POST['force_reimport'] === 1 || 
+		$_POST['force_reimport'] === true 
+	);
 	
 	if ( empty( $batch_id ) || empty( $urls ) ) {
 		wp_send_json_error( 'Invalid batch data' );
 	}
-	
 	// Check if import was cancelled
 	$cancel_flag = get_transient( "uimptr_cancel_{$batch_id}" );
 	if ( $cancel_flag ) {
