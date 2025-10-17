@@ -7,7 +7,8 @@
 /**
  * Ui_Big_File_Uploads_File_Scan
  */
-class Ui_Big_File_Uploads_File_Scan {
+// Legacy wrapper for PSR-4 migration. Use UrlImageImporter\FileScan\UiBigFileUploadsFileScan instead.
+class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFileUploadsFileScan {
 
 	public $is_done = false;
 	public $paths_left = [];
@@ -31,7 +32,7 @@ class Ui_Big_File_Uploads_File_Scan {
 		$this->root_path  = rtrim( $root_path, '/' ); //expected no trailing slash.
 		$this->timeout    = $timeout;
 		$this->paths_left = $paths_left;
-		$this->instance   = BigFileUploads::get_instance();
+	$this->instance   = null; // BigFileUploads dependency removed
 	}
 
 	/**
@@ -102,7 +103,7 @@ class Ui_Big_File_Uploads_File_Scan {
 			$path = array_pop( $paths );
 
 			// Skip ".." items.
-			if ( preg_match( '/\.\.([\/\\\\]|$)/', $path ) ) {
+			if ( preg_match( '/\.\.(\/|\\\\|$)/', $path ) ) {
 				continue;
 			}
 

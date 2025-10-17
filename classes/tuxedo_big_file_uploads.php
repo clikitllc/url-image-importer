@@ -3,7 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	die();
 }
 
-define( 'BIG_FILE_UPLOADS_VERSION', '2.1.4' );
+// Don't define BIG_FILE_UPLOADS_VERSION to avoid conflicts with actual Big File Uploads plugin
+// This legacy file should only load when Big File Uploads is NOT active anyway
+// We'll use UIMPTR_VERSION for cache busting instead
 
 /**
  * Big File Uploads manager class.
@@ -239,7 +241,7 @@ class UrlBigFileUploads {
 			'bfu-block-upload-notice',
 			plugin_dir_url( __FILE__ ) . 'assets/js/block-notice.js',
 			[ 'wp-blocks', 'wp-i18n', 'wp-element', 'wp-editor' ],
-			BIG_FILE_UPLOADS_VERSION
+			UIMPTR_VERSION
 		);
 
 		wp_set_script_translations( 'bfu-block-upload-notice', 'tuxedo-big-file-uploads' );
@@ -976,9 +978,9 @@ class UrlBigFileUploads {
 	 * @since 2.0
 	 */
 	function admin_scripts() {
-		wp_enqueue_script( 'bfu-bootstrap', plugins_url( 'assets/bootstrap/js/bootstrap.bundle.min.js', __FILE__ ), [ 'jquery' ], BIG_FILE_UPLOADS_VERSION );
-		wp_enqueue_script( 'bfu-chartjs', plugins_url( 'assets/js/Chart.min.js', __FILE__ ), [], BIG_FILE_UPLOADS_VERSION );
-		wp_enqueue_script( 'bfu-js', plugins_url( 'assets/js/admin.js', __FILE__ ), [ 'bfu-bootstrap', 'bfu-chartjs' ], BIG_FILE_UPLOADS_VERSION );
+		wp_enqueue_script( 'bfu-bootstrap', plugins_url( 'assets/bootstrap/js/bootstrap.bundle.min.js', __FILE__ ), [ 'jquery' ], UIMPTR_VERSION );
+		wp_enqueue_script( 'bfu-chartjs', plugins_url( 'assets/js/Chart.min.js', __FILE__ ), [], UIMPTR_VERSION );
+		wp_enqueue_script( 'bfu-js', plugins_url( 'assets/js/admin.js', __FILE__ ), [ 'bfu-bootstrap', 'bfu-chartjs' ], UIMPTR_VERSION );
 
 		$data                        = [];
 		$data['strings']             = [
@@ -1004,8 +1006,8 @@ class UrlBigFileUploads {
 	 * @since 2.0
 	 */
 	function admin_styles() {
-		wp_enqueue_style( 'tuxbfu-bootstrap', plugins_url( 'assets/bootstrap/css/bootstrap.min.css', __FILE__ ), false, BIG_FILE_UPLOADS_VERSION );
-		wp_enqueue_style( 'tuxbfu-styles', plugins_url( 'assets/css/admin.css', __FILE__ ), [ 'tuxbfu-bootstrap' ], BIG_FILE_UPLOADS_VERSION );
+		wp_enqueue_style( 'tuxbfu-bootstrap', plugins_url( 'assets/bootstrap/css/bootstrap.min.css', __FILE__ ), false, UIMPTR_VERSION );
+		wp_enqueue_style( 'tuxbfu-styles', plugins_url( 'assets/css/admin.css', __FILE__ ), [ 'tuxbfu-bootstrap' ], UIMPTR_VERSION );
 	}
 
 	/**
