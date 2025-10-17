@@ -84,21 +84,18 @@ class Plugin {
 	 */
 	private function init() {
 		\add_action( 'init', array( $this, 'load_textdomain' ) );
+		\add_action( 'init', array( $this, 'init_components' ) );
 		\add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 		\add_action( 'admin_enqueue_scripts', array( $this, 'admin_styles' ) );
 		\add_filter( 'plugin_action_links_url-image-importer/url-image-importer.php', array( $this, 'plugin_action_links' ) );
 		
-		$this->init_components();
 		$this->register_ajax_handlers();
 	}
 
 	/**
 	 * Initialize plugin components.
 	 */
-	private function init_components() {
-		$this->admin_page     = new AdminPage( $this->plugin_path, $this->plugin_url );
-		$this->image_importer = new ImageImporter();
-		
+	public function init_components() {
 		// Initialize promotional notices
 		\UrlImageImporter\Admin\PromoNotices::get_instance();
 	}
@@ -131,7 +128,7 @@ class Plugin {
 			'Import Images',
 			'upload_files',
 			'import-images-url',
-			array( $this->admin_page, 'render_page' )
+			'uimptr_import_images_url_page'
 		);
 	}
 
@@ -184,13 +181,13 @@ class Plugin {
 				\esc_url( \admin_url( 'upload.php?page=import-images-url' ) ),
 				\esc_html__( 'Settings', 'url-image-importer' )
 			),
-			'docs' => sprintf(
+			'support' => sprintf(
 				'<a href="%s" target="_blank">%s</a>',
-				\esc_url( 'https://infiniteuploads.com/docs/url-image-importer/?utm_source=url_image_importer&utm_medium=plugin&utm_campaign=plugin_links' ),
-				\esc_html__( 'Docs', 'url-image-importer' )
+				\esc_url( 'https://infiniteuploads.com/support/?utm_source=url_image_importer&utm_medium=plugin&utm_campaign=plugin_links' ),
+				\esc_html__( 'Support', 'url-image-importer' )
 			),
 			'upgrade' => sprintf(
-				'<a href="%s" target="_blank" style="color: #8D00B1; font-weight: bold;">%s</a>',
+				'<a href="%s" target="_blank" style="color: #93003f; font-weight: bold;">%s</a>',
 				\esc_url( \UrlImageImporter\Admin\PromoNotices::get_upgrade_url( 'plugin_links' ) ),
 				\esc_html__( 'Go Pro', 'url-image-importer' )
 			),

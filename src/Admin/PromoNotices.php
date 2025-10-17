@@ -13,6 +13,8 @@ namespace UrlImageImporter\Admin;
  * Handles promotional notices and upgrade prompts.
  */
 class PromoNotices {
+    private $notices = [];
+    private $default_delay = 7; // Days to wait before showing again after "Maybe Later"
 
 	/**
 	 * PromoNotices instance.
@@ -37,189 +39,264 @@ class PromoNotices {
 	 * Constructor.
 	 */
 	public function __construct() {
-		add_action( 'admin_notices', array( $this, 'display_promo_notices' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_promo_scripts' ) );
+		add_action( 'admin_notices', array( $this, 'display_notices' ) );
 		add_action( 'wp_ajax_uimptr_handle_promo_action', array( $this, 'handle_promo_action' ) );
+        
+        // Initialize promotional notices after WordPress is ready for translations
+        add_action( 'init', array( $this, 'init_notices' ) );
 	}
 
-	/**
-	 * Enqueue scripts for promotional notices.
-	 */
-	public function enqueue_promo_scripts( $hook ) {
-		// Only load on our plugin pages
-		if ( strpos( $hook, 'import-images-url' ) === false ) {
-			return;
-		}
+    /**
+     * Initialize promotional notices
+     * Note: These notices only show when Big File Uploads is NOT already active
+     */
+    public function init_notices() {
+        // Big File Form Uploads promotion - only shows if the user doesn't already have it
+        $this->add_notice([
+            'id' => 'big_file_form_uploads_promo',
+            'title' => __('Complete Your File Management Setup', 'url-image-importer'),
+            'message' => __('You\'re importing images efficiently with URL Image Importer! Now add Big File Form Uploads to handle large file uploads from your website visitors - the perfect complement to your media workflow for better user experience.', 'url-image-importer'),
+            'type' => 'info',
+            'buttons' => [
+                'primary' => [
+                    'text' => __('Learn More & Get Big File Form Uploads', 'url-image-importer'),
+                    'action' => 'link',
+                    'link' => 'https://infiniteuploads.com/big-file-uploads/',
+                    'type' => 'primary'
+                ],
+                'maybe_later' => [
+                    'text' => __('Maybe Later', 'url-image-importer'),
+                    'action' => 'delay',
+                ],
+                'dismiss' => [
+                    'text' => __('Not Interested', 'url-image-importer'),
+                    'action' => 'dismiss',
+                ]
+            ]
+        ]);
+    }
 
-		wp_enqueue_script(
-			'uimptr-promo-notices',
-			plugin_dir_url( dirname( dirname( __FILE__ ) ) ) . 'assets/js/promo-notices.js',
-			array( 'jquery' ),
-			'1.0.3',
-			true
-		);
+    /**
+     * Add a new promotion notice
+     *
+     * @param  array  $notice  Notice configuration
+     * @return void
+     */
+    public function add_notice( $notice ) {
+        $default = [
+            'id'          => '',
+            'title'       => '',
+            'message'     => '',
+            'link'        => '',
+            'link_text'   => __( 'Learn More', 'url-image-importer' ),
+            'delay_days'  => $this->default_delay,
+            'type'        => 'info', // info, warning, error, success
+            'dismissible' => true,
+            'buttons'     => [
+                'primary'     => [],
+                'secondary'   => [],
+                'dismiss'     => [
+                    'text'   => __( 'Dismiss', 'url-image-importer' ),
+                    'action' => 'dismiss',
+                ],
+                'maybe_later' => [
+                    'text'   => __( 'Maybe Later', 'url-image-importer' ),
+                    'action' => 'delay',
+                ],
+            ],
+        ];
 
-		wp_localize_script(
-			'uimptr-promo-notices',
-			'uimptrPromo',
-			array(
-				'ajaxurl' => admin_url( 'admin-ajax.php' ),
-				   'nonce'   => wp_create_nonce( 'uimptr_promo_action' ),
-			)
-		);
-	}
+        $notice          = wp_parse_args( $notice, $default );
+        $this->notices[] = $notice;
+    }
 
 	/**
 	 * Display promotional notices.
 	 */
-	public function display_promo_notices() {
-		$screen = get_current_screen();
-		
-		// Only show on our plugin pages
-		if ( ! $screen || strpos( $screen->id, 'import-images-url' ) === false ) {
-			return;
-		}
+	public function display_notices() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
 
-		// Check if user has capability
-		if ( ! current_user_can( 'upload_files' ) ) {
-			return;
-		}
+        // Don't show promotional notices if Big File Uploads is already active
+        if ( function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php') ) {
+            return;
+        }
 
-		// Show upgrade notice
-		$this->display_upgrade_notice();
+        // Only show on relevant admin pages
+        $screen = get_current_screen();
+        if ( ! $screen || ! in_array( $screen->id, [
+            'media_page_url-image-importer',
+            'plugins',
+            'dashboard'
+        ] ) ) {
+            return;
+        }
 
-		// Show feature highlight notice
-		$this->display_feature_notice();
-	}
+        foreach ( $this->notices as $notice ) {
+            if ( $this->should_display_notice( $notice ) ) {
+                $this->render_notice( $notice );
+            }
+        }
+
+        $this->enqueue_scripts();
+    }
+
+    /**
+     * Check if notice should be displayed
+     */
+    private function should_display_notice( $notice ) {
+        $user_id       = get_current_user_id();
+        $notice_status = get_user_meta( $user_id, 'uimptr_notice_' . $notice['id'], true );
+
+        if ( $notice_status === 'dismissed' || $notice_status === 'visited' ) {
+            return false;
+        }
+
+        if ( $notice_status && is_array( $notice_status ) ) {
+            if ( $notice_status['action'] === 'delay' &&
+                 time() < $notice_status['show_after'] ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Render individual notice
+     */
+    private function render_notice( $notice ) {
+        ?>
+        <div class="notice notice-<?php echo esc_attr( $notice['type'] ); ?> uimptr-notice is-dismissible"
+             data-notice-id="<?php echo esc_attr( $notice['id'] ); ?>">
+            <button type="button" class="notice-dismiss" data-action="dismiss">
+                <span class="screen-reader-text"><?php esc_html_e( 'Dismiss this notice', 'url-image-importer' ); ?></span>
+            </button>
+
+            <div class="uimptr-notice-content">
+                <div class="uimptr-notice-icon">
+                    <span class="dashicons dashicons-upload" style="font-size: 24px; color: #0073aa;"></span>
+                </div>
+                <div class="uimptr-notice-text">
+                    <h3 style="margin-top: 0;"><?php echo esc_html( $notice['title'] ); ?></h3>
+                    <p><?php echo wp_kses_post( $notice['message'] ); ?></p>
+
+                    <p class="uimptr-notice-actions">
+                        <?php foreach ( $notice['buttons'] as $type => $button ): ?>
+                            <?php if ( empty( $button ) || $type === 'dismiss' ) continue; ?>
+                            <?php
+                            $class = ( isset( $button['type'] ) && $button['type'] === 'primary' ) 
+                                ? 'button-primary' 
+                                : 'button-secondary';
+                            ?>
+                            <button type="button"
+                                    class="button <?php echo esc_attr( $class ); ?>"
+                                    data-action="<?php echo esc_attr( $button['action'] ); ?>"
+                                    <?php if ( ! empty( $button['link'] ) ): ?>
+                                    data-link="<?php echo esc_attr( $button['link'] ); ?>"
+                                    <?php endif; ?>
+                            >
+                                <?php echo esc_html( $button['text'] ); ?>
+                            </button>
+                        <?php endforeach; ?>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <style>
+        .uimptr-notice-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding-top: 12px;
+        }
+        .uimptr-notice-icon {
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+        .uimptr-notice-text {
+            flex-grow: 1;
+        }
+        .uimptr-notice-actions .button {
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+        </style>
+        <?php
+    }
+
+    /**
+     * Enqueue necessary scripts
+     */
+    private function enqueue_scripts() {
+        // Only enqueue if we have notices to show
+        if ( empty( $this->notices ) ) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'uimptr-promo-notices',
+            plugin_dir_url( dirname( dirname( __FILE__ ) ) ) . 'assets/js/promo-notices.js',
+            [ 'jquery' ],
+            UIMPTR_VERSION,
+            true
+        );
+
+        wp_localize_script( 'uimptr-promo-notices', 'uimptrPromo', [
+            'ajaxurl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'uimptr_promo_nonce' ),
+        ] );
+    }
 
 	/**
-	 * Display upgrade to Pro notice.
-	 */
-	private function display_upgrade_notice() {
-		$notice_id = 'uimptr_upgrade_notice';
-		$dismissed = get_user_option( $notice_id . '_dismissed', get_current_user_id() );
-
-		// Show notice every 30 days after dismissal
-		if ( $dismissed && ( time() - $dismissed ) < ( 30 * DAY_IN_SECONDS ) ) {
-			return;
-		}
-
-		?>
-		<div class="notice notice-info is-dismissible uimptr-promo-notice" data-notice-id="<?php echo esc_attr( $notice_id ); ?>">
-			<div style="display: flex; align-items: center; padding: 10px 0;">
-				<div style="flex: 1;">
-					<h3 style="margin: 0 0 10px 0;">
-						🚀 <?php esc_html_e( 'Upgrade to Big File Form Uploads Pro!', 'url-image-importer' ); ?>
-					</h3>
-					<p style="margin: 0 0 10px 0;">
-						<?php esc_html_e( 'Take your file uploads to the next level with advanced features:', 'url-image-importer' ); ?>
-					</p>
-					<ul style="margin: 0 0 10px 20px; list-style: disc;">
-						<li><?php esc_html_e( 'Frontend form uploads with drag & drop', 'url-image-importer' ); ?></li>
-						<li><?php esc_html_e( 'Direct uploads to cloud storage (AWS S3, Google Cloud, etc.)', 'url-image-importer' ); ?></li>
-						<li><?php esc_html_e( 'Custom upload forms with shortcodes', 'url-image-importer' ); ?></li>
-						<li><?php esc_html_e( 'Advanced file type restrictions', 'url-image-importer' ); ?></li>
-						<li><?php esc_html_e( 'Email notifications and user management', 'url-image-importer' ); ?></li>
-					</ul>
-				</div>
-				<div style="margin-left: 20px;">
-					<button 
-						type="button" 
-						class="button button-primary button-hero" 
-						data-action="upgrade" 
-						data-link="https://infiniteuploads.com/big-file-form-uploads/?utm_source=url_image_importer&utm_medium=plugin&utm_campaign=upgrade_notice"
-						style="white-space: nowrap;"
-					>
-						<?php esc_html_e( 'Learn More →', 'url-image-importer' ); ?>
-					</button>
-					<br><br>
-					<button 
-						type="button" 
-						class="button" 
-						data-action="dismiss"
-						style="white-space: nowrap;"
-					>
-						<?php esc_html_e( 'Maybe Later', 'url-image-importer' ); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Display feature highlight notice.
-	 */
-	private function display_feature_notice() {
-		$notice_id = 'uimptr_feature_notice';
-		$dismissed = get_user_option( $notice_id . '_dismissed', get_current_user_id() );
-
-		// Show notice every 60 days after dismissal
-		if ( $dismissed && ( time() - $dismissed ) < ( 60 * DAY_IN_SECONDS ) ) {
-			return;
-		}
-
-		// Don't show if upgrade notice is showing
-		$upgrade_dismissed = get_user_option( 'uimptr_upgrade_notice_dismissed', get_current_user_id() );
-		if ( ! $upgrade_dismissed || ( time() - $upgrade_dismissed ) < ( 30 * DAY_IN_SECONDS ) ) {
-			return;
-		}
-
-		?>
-		<div class="notice notice-success is-dismissible uimptr-promo-notice" data-notice-id="<?php echo esc_attr( $notice_id ); ?>">
-			<div style="display: flex; align-items: center; padding: 10px 0;">
-				<div style="flex: 1;">
-					<h3 style="margin: 0 0 10px 0;">
-						💡 <?php esc_html_e( 'Did You Know?', 'url-image-importer' ); ?>
-					</h3>
-					<p style="margin: 0;">
-						<?php esc_html_e( 'You can import hundreds of images at once using CSV files! Perfect for bulk migrations and product imports.', 'url-image-importer' ); ?>
-						<a href="https://infiniteuploads.com/docs/url-image-importer/?utm_source=url_image_importer&utm_medium=plugin&utm_campaign=feature_notice" target="_blank">
-							<?php esc_html_e( 'Learn more →', 'url-image-importer' ); ?>
-						</a>
-					</p>
-				</div>
-				<div style="margin-left: 20px;">
-					<button 
-						type="button" 
-						class="button" 
-						data-action="dismiss"
-					>
-						<?php esc_html_e( 'Got it!', 'url-image-importer' ); ?>
-					</button>
-				</div>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Handle AJAX promo action (dismiss or upgrade click).
+	 * Handle AJAX promo action (dismiss, delay, or link click).
 	 */
 	public function handle_promo_action() {
-		check_ajax_referer( 'uimptr_promo_action', 'nonce' );
+        check_ajax_referer( 'uimptr_promo_nonce', 'nonce' );
 
-		if ( ! current_user_can( 'upload_files' ) ) {
-			wp_send_json_error( array( 'message' => 'Permission denied' ) );
-		}
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Permission denied' );
+        }
 
-		$notice_id = isset( $_POST['notice_id'] ) ? sanitize_text_field( $_POST['notice_id'] ) : '';
-		$action_type = isset( $_POST['action_type'] ) ? sanitize_text_field( $_POST['action_type'] ) : '';
+        $notice_id = sanitize_text_field( $_POST['notice_id'] );
+        $action    = sanitize_text_field( $_POST['action_type'] );
+        $user_id   = get_current_user_id();
 
-		if ( empty( $notice_id ) ) {
-			wp_send_json_error( array( 'message' => 'Invalid notice ID' ) );
-		}
+        switch ( $action ) {
+            case 'dismiss':
+                update_user_meta( $user_id, 'uimptr_notice_' . $notice_id, 'dismissed' );
+                break;
 
-		// Record dismissal with timestamp
-		update_user_option( get_current_user_id(), $notice_id . '_dismissed', time() );
+            case 'link':
+                update_user_meta( $user_id, 'uimptr_notice_' . $notice_id, 'visited' );
+                break;
 
-		// Track action type for analytics (optional)
-		if ( 'upgrade' === $action_type ) {
-			update_user_option( get_current_user_id(), $notice_id . '_clicked', time() );
-		}
+            case 'delay':
+                // Find the notice to get delay_days
+                $notice = array_filter( $this->notices, function ( $n ) use ( $notice_id ) {
+                    return $n['id'] === $notice_id;
+                } );
 
-		wp_send_json_success( array( 'message' => 'Notice dismissed' ) );
-	}
+                $notice = reset( $notice );
+
+                if ( ! $notice || ! isset( $notice['delay_days'] ) ) {
+                    $delay_days = $this->default_delay; // Fallback to default if not set
+                } else {
+                    $delay_days = $notice['delay_days'];
+                }
+
+                $show_after = time() + ( DAY_IN_SECONDS * $delay_days );
+                update_user_meta( $user_id, 'uimptr_notice_' . $notice_id, [
+                    'action'     => 'delay',
+                    'show_after' => $show_after,
+                ] );
+                break;
+        }
+
+        wp_send_json_success();
+    }
 
 	/**
 	 * Get Pro upgrade URL.

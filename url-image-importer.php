@@ -17,7 +17,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-error_log( 'URL Image Importer: Plugin file loaded' );
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
@@ -27,34 +26,22 @@ define( 'UPLOADBLOGSDIR', $upload_dir['path'] );
 // Composer autoload for PSR-4 classes
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
-    error_log('URL Image Importer: Composer autoloader loaded successfully');
-} else {
-    error_log('URL Image Importer: ERROR - Composer autoloader not found at ' . __DIR__ . '/vendor/autoload.php');
+    
+    // Initialize the Plugin class to enable action links and other features
+    \UrlImageImporter\Core\Plugin::get_instance();
 }
 
-// Check if Big File Uploads plugin directory exists (more reliable than is_plugin_active early in load)
+// Check if Big File Uploads plugin exists
 $big_file_uploads_exists = file_exists(WP_PLUGIN_DIR . '/tuxedo-big-file-uploads/tuxedo_big_file_uploads.php');
 
-// Legacy class aliases for compatibility - only if Big File Uploads plugin is not installed/active
-if (!class_exists('Big_File_Uploads_File_Scan') && !$big_file_uploads_exists) {
-    if (class_exists('UrlImageImporter\FileScan\FileScan')) {
-        class_alias('UrlImageImporter\FileScan\FileScan', 'Big_File_Uploads_File_Scan');
-        error_log('URL Image Importer: Created class alias for Big_File_Uploads_File_Scan');
-    }
-}
-
-// Note: Removed BigFileUploads ReviewNotice alias - this functionality is not needed in URL Image Importer
-
-// Log conflict detection
-if ($big_file_uploads_exists) {
-    error_log('URL Image Importer: Big File Uploads plugin detected - skipping class aliases to prevent conflicts');
-}
+// URL Image Importer now uses completely independent FileScan classes
+// No class aliases are created to ensure complete compatibility with Big File Uploads
 
 // Check for plugin conflicts and display admin notice if needed
 add_action('admin_notices', 'uimptr_check_plugin_conflicts');
 
 /**
- * Check for plugin conflicts and display warnings
+ * Check for plugin compatibility and display friendly notice
  */
 function uimptr_check_plugin_conflicts() {
     // Only show on admin pages
@@ -62,35 +49,15 @@ function uimptr_check_plugin_conflicts() {
         return;
     }
     
-    // Check if Big File Uploads is also active (now we can safely use is_plugin_active)
+    // Show friendly compatibility notice if Big File Uploads is also active
     if (function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php')) {
-        // Only show once per session
-        if (!get_transient('uimptr_bfu_notice_shown')) {
-            echo '<div class="notice notice-info is-dismissible"><p>';
-            echo '<strong>URL Image Importer:</strong> ';
-            echo esc_html__('Big File Uploads plugin is also active. Both plugins can work together safely.', 'url-image-importer');
+        // Only show once per week to avoid spam
+        if (!get_transient('uimptr_bfu_compatibility_notice_shown')) {
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo '<strong>URL Image Importer & Big File Uploads:</strong> ';
+            echo esc_html__('Great! Both plugins are active and working together perfectly. URL Image Importer handles bulk imports while Big File Uploads manages large file uploads.', 'url-image-importer');
             echo '</p></div>';
-            set_transient('uimptr_bfu_notice_shown', true, DAY_IN_SECONDS);
-        }
-    }
-    
-    // Check for unexpected class conflicts
-    if (class_exists('Big_File_Uploads_File_Scan') && class_exists('UrlImageImporter\FileScan\FileScan')) {
-        try {
-            $reflection = new ReflectionClass('Big_File_Uploads_File_Scan');
-            $filename = $reflection->getFileName();
-            
-            // If the class is not from our plugin and not from Big File Uploads, show warning
-            if ($filename && 
-                strpos($filename, 'url-image-importer') === false && 
-                strpos($filename, 'tuxedo-big-file-uploads') === false) {
-                echo '<div class="notice notice-warning"><p>';
-                echo '<strong>URL Image Importer:</strong> ';
-                echo esc_html__('Class conflict detected with another plugin. Please contact support if you experience issues.', 'url-image-importer');
-                echo '</p></div>';
-            }
-        } catch (Exception $e) {
-            // Ignore reflection errors
+            set_transient('uimptr_bfu_compatibility_notice_shown', true, WEEK_IN_SECONDS);
         }
     }
 }
@@ -113,11 +80,7 @@ add_action( 'admin_menu', 'uimptr_admin_menu' );
  * Enqueue scripts and styles
  */
 function uimptr_admin_styles() {
-	// Debug: Log page check
-	error_log( 'uimptr_admin_styles called. Page: ' . ( isset( $_GET['page'] ) ? $_GET['page'] : 'not set' ) );
-	
 	if ( isset( $_GET['page'] ) && 'import-images-url' === $_GET['page'] ) {
-		error_log( 'Loading UIMPTR scripts on import-images-url page' );
 		wp_enqueue_style( 'uimptr-bootstrap', plugins_url( 'assets/bootstrap/css/bootstrap.min.css', __FILE__ ), '', UIMPTR_VERSION );
 		wp_enqueue_style( 'uimptr-styles', plugins_url( 'assets/css/admin.css', __FILE__ ), '', UIMPTR_VERSION );
 		wp_enqueue_script( 'uimptr-chartjs', plugins_url( 'assets/js/Chart.min.js', __FILE__ ), '', UIMPTR_VERSION, true );
@@ -143,7 +106,6 @@ function uimptr_admin_styles() {
 			'nonce' => wp_create_nonce( 'uimptr_ajax' )
 		);
 		wp_localize_script( 'uimptr-js', 'uimptr_ajax', $uimptr_ajax_data );
-		error_log( 'URL Image Importer: AJAX URL set to: ' . $ajax_url );
 		
 		// Add inline script to verify AJAX object is loaded
 		$inline_script = '
@@ -1332,15 +1294,9 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 			$formatted_date = date( 'Y-m-d H:i:s', $timestamp );
 			$attachment['post_date'] = $formatted_date;
 			$attachment['post_date_gmt'] = get_gmt_from_date( $formatted_date );
-			
-			// Debug log to verify dates are being set correctly
-			error_log( "URL Image Importer: Preserving original date for {$title}: {$formatted_date} (original: {$date})" );
 		} else {
 			error_log( "URL Image Importer: Failed to parse date: {$date}" );
 		}
-	} elseif ( !$preserve_dates ) {
-		// Use current date (default WordPress behavior) - images will appear at top
-		error_log( "URL Image Importer: Using current date for {$title} (will appear at top)" );
 	}
 
 	$attachment_id = wp_insert_attachment( $attachment, $file_path );
@@ -1371,11 +1327,8 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		if ( !empty($alt_text) ) {
 			update_post_meta( $attachment_id, '_wp_attachment_image_alt', $alt_text );
 		}
-		
-		// Debug log successful import
-		error_log( "URL Image Importer: Successfully imported {$image_url} as attachment ID {$attachment_id}" );
 	} else {
-		// Debug log attachment creation failure
+		// Log attachment creation failure
 		error_log( "URL Image Importer: Failed to create attachment for {$image_url}: " . $attachment_id->get_error_message() );
 	}
 
@@ -1414,7 +1367,6 @@ function uimptr_ajax_file_scan() {
 		$is_done        = $file_scan->is_done;
 
 		$data = compact( 'file_count', 'file_size', 'is_done', 'remaining_dirs' );
-		error_log('URL Image Importer: Scan finished. Data: ' . print_r($data, true));
 		wp_send_json_success( $data );
 	} catch (Throwable $e) {
 		error_log('URL Image Importer: Scan failed with error: ' . $e->getMessage());
@@ -1464,15 +1416,9 @@ add_action( 'wp_ajax_uimptr_import_single_url', 'uimptr_ajax_import_single_url' 
  * AJAX handler for XML processing (extract URLs)
  */
 function uimptr_ajax_process_xml_import() {
-	// Debug logging
-	error_log( 'XML Import AJAX endpoint called' );
-	error_log( 'POST data: ' . print_r( $_POST, true ) );
-	error_log( 'FILES data: ' . print_r( $_FILES, true ) );
-	
 	check_ajax_referer( 'uimptr_ajax', 'nonce' );
 	
 	if ( ! current_user_can( 'upload_files' ) ) {
-		error_log( 'XML Import: Permission denied for user' );
 		wp_send_json_error( 'Permission denied' );
 	}
 	
@@ -1523,35 +1469,23 @@ function uimptr_ajax_process_xml_import() {
 	) );
 }
 add_action( 'wp_ajax_uimptr_process_xml_import', 'uimptr_ajax_process_xml_import' );
-error_log( 'URL Image Importer: Registered wp_ajax_uimptr_process_xml_import action' );
 
 // Test endpoint to verify AJAX is working
 function uimptr_test_ajax_connection() {
-	error_log( 'Test AJAX endpoint called successfully' );
-	error_log( 'POST data: ' . print_r( $_POST, true ) );
-	
 	// Don't require nonce for testing
 	if ( ! current_user_can( 'upload_files' ) ) {
-		error_log( 'Test AJAX: Permission denied' );
 		wp_send_json_error( 'Permission denied - user not logged in' );
 	}
 	
 	wp_send_json_success( 'AJAX connection working' );
 }
 add_action( 'wp_ajax_uimptr_test_connection', 'uimptr_test_ajax_connection' );
-error_log( 'URL Image Importer: Registered wp_ajax_uimptr_test_connection action' );
 
 // CSV Import AJAX endpoint
 function uimptr_ajax_process_csv_import() {
-	// Debug logging
-	error_log( 'CSV Import AJAX endpoint called' );
-	error_log( 'POST data: ' . print_r( $_POST, true ) );
-	error_log( 'FILES data: ' . print_r( $_FILES, true ) );
-	
 	check_ajax_referer( 'uimptr_ajax', 'nonce' );
 	
 	if ( ! current_user_can( 'upload_files' ) ) {
-		error_log( 'CSV Import: Permission denied for user' );
 		wp_send_json_error( 'Permission denied' );
 	}
 	
@@ -1602,7 +1536,6 @@ function uimptr_ajax_process_csv_import() {
 	) );
 }
 add_action( 'wp_ajax_uimptr_process_csv_import', 'uimptr_ajax_process_csv_import' );
-error_log( 'URL Image Importer: Registered wp_ajax_uimptr_process_csv_import action' );
 
 /**
  * AJAX handler for batch import with progress tracking
@@ -1898,8 +1831,6 @@ function uimptr_extract_urls_from_xml_content( $xml_content, $preserve_dates = f
 			
 			return $result;
 		});
-	} else {
-		error_log( "URL Image Importer: Not sorting - using current date for all imports (will appear at top)" );
 	}
 	
 	return $urls_data;
