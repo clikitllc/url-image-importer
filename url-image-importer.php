@@ -3,14 +3,14 @@
  *
  * Plugin Name: URL Image Importer
  * Description: A plugin to import multiple images into the WordPress Media Library from URLs.
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: Infinite Uploads
  * Author URI: https://infiniteuploads.com
  * Text Domain: url-image-importer
  * License: GPL2
  *
  * @package UrlImageImporter
- * @version 1.0
+ * @version 1.0.7
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', '1.0.6' );
+define( 'UIMPTR_VERSION', '1.0.7' );
 define( 'UPLOADBLOGSDIR', $upload_dir['basedir'] );  // Use basedir for root uploads folder, not path (current month)
 
 // Composer autoload for PSR-4 classes
@@ -1316,12 +1316,12 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 	}
 
 	$image_data = wp_remote_retrieve_body( $response );
-	$image_type = wp_remote_retrieve_header( $response, 'content-type' );
-
-	if ( empty( $image_data ) || strpos( $image_type, 'image/' ) !== 0 ) {
-		return new WP_Error( 'invalid_image', 'The provided URL is not a valid image.' );
+	
+	if ( empty( $image_data ) ) {
+		return new WP_Error( 'invalid_image', 'No data received from URL.' );
 	}
 
+	// Extract filename from URL
 	$upload_dir = wp_upload_dir();
 	$filename_url_path = is_string( $image_url ) ? parse_url( $image_url, PHP_URL_PATH ) : false;
 	$filename = '';
@@ -1330,35 +1330,74 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		$filename = basename( $filename_url_path );
 	}
 
-	// If no filename or no extension, generate one based on content type or fallback
-	if ( ! $filename || ! pathinfo( $filename, PATHINFO_EXTENSION ) ) {
-		// Try to get extension from content type
-		$extension = 'jpg'; // Default fallback
-		if ( $image_type ) {
-			$type_parts = explode( '/', $image_type );
-			if ( count( $type_parts ) === 2 ) {
-				$extension = $type_parts[1];
-				// Handle some common variations
-				if ( $extension === 'jpeg' ) {
-					$extension = 'jpg';
-				}
-			}
-		}
-		
-		// Generate filename with title if available
-		$base_name = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
-		$filename = $base_name . '.' . $extension;
+	// Sanitize filename and ensure it has a base name
+	if ( ! $filename ) {
+		$filename = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
 	}
-
+	
+	// Sanitize the filename
+	$filename = sanitize_file_name( $filename );
+	
+	// Create a temporary file first for validation
+	$temp_file = wp_tempnam( $filename );
+	$saved = file_put_contents( $temp_file, $image_data );
+	
+	if ( $saved === false ) {
+		return new WP_Error( 'file_save_failed', 'Failed to save temporary file.' );
+	}
+	
+	// SECURITY: Validate the actual file content using WordPress's image validation
+	$wp_filetype = wp_check_filetype_and_ext( $temp_file, $filename );
+	
+	// Clean up and reject if validation fails
+	if ( ! $wp_filetype['type'] || ! $wp_filetype['ext'] ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image', 'File failed content validation. Not a valid image file.' );
+	}
+	
+	// Verify it's actually an image by checking if we can get image info
+	$image_info = @getimagesize( $temp_file );
+	if ( $image_info === false ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image', 'File is not a valid image format.' );
+	}
+	
+	// SECURITY: Validate that mime type from content is in allowed list
+	$allowed_mime_types = get_allowed_mime_types();
+	if ( ! in_array( $image_info['mime'], $allowed_mime_types, true ) ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image_mime', 'Image mime type is not allowed.' );
+	}
+	
+	// SECURITY: Ensure the detected type is an image mime type
+	if ( strpos( $wp_filetype['type'], 'image/' ) !== 0 ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image', 'File must be an image type.' );
+	}
+	
+	// Build filename with validated extension from actual content
+	$filename_base = pathinfo( $filename, PATHINFO_FILENAME );
+	if ( empty( $filename_base ) ) {
+		$filename_base = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
+	}
+	$filename = $filename_base . '.' . $wp_filetype['ext'];
+	$filename = sanitize_file_name( $filename );
+	
+	// Generate unique filename to prevent overwrites
+	$filename = wp_unique_filename( $upload_dir['path'], $filename );
 	$file_path = $upload_dir['path'] . '/' . $filename;
 	
-	// Save the file
-	$saved = file_put_contents( $file_path, $image_data );
-	if ( $saved === false ) {
-		return new WP_Error( 'file_save_failed', 'Failed to save image file to uploads directory.' );
+	// Move the validated temp file to final location
+	if ( ! @rename( $temp_file, $file_path ) ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'file_move_failed', 'Failed to move validated file to uploads directory.' );
 	}
-
-	$file_type = wp_check_filetype( $filename, null );
+	
+	// Use the validated file type
+	$file_type = array(
+		'ext'  => $wp_filetype['ext'],
+		'type' => $wp_filetype['type']
+	);
 	
 	// Verify the file was actually saved and is readable
 	if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {

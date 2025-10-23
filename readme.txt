@@ -3,7 +3,7 @@ Contributors: bww
 Tags: import image, image import, import image to media library, media library
 Requires at least: 5.3
 Tested up to: 6.7.1
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 Requires PHP: 7.4
 License: GPLv2 or higher
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -99,6 +99,17 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 3.Submit the form. If successful, the image is added to the Media Library, and you get a link to edit it.
 
 == Changelog ==
+
+= 1.0.7 - 10/23/2025 =
+**SECURITY FIX - CRITICAL UPDATE**
+- Fixed: Arbitrary file upload vulnerability reported by Wordfence Threat Intelligence
+- Security: Removed reliance on user-controlled Content-Type HTTP headers for file validation
+- Security: Implemented proper file validation BEFORE writing to disk using wp_check_filetype_and_ext()
+- Security: Added actual image content validation using getimagesize()
+- Security: Enforced strict mime type checking against WordPress allowed mime types
+- Security: Files are now validated in temporary location before moving to uploads directory
+- Security: Added unique filename generation to prevent file overwrites
+- Hardened: Multiple layers of validation ensure only legitimate image files can be imported
 
 = 1.0.6 - 10/17/2025 =
 - Added PSR-4 autoloading with Composer for improved code organization
