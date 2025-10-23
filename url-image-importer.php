@@ -169,6 +169,25 @@ function uimptr_handle_xml_import() {
 		return array( 'errors' => 1, 'messages' => array( 'Please upload a valid XML file.' ) );
 	}
 
+	// SECURITY: Validate uploaded file type before processing
+	// XML files may have various mime types: text/xml, application/xml, text/plain
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$detected_mime = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	$allowed_xml_mimes = array( 'text/xml', 'application/xml', 'text/plain' );
+	if ( ! in_array( $detected_mime, $allowed_xml_mimes, true ) ) {
+		return array( 'errors' => 1, 'messages' => array( 'Invalid file type. Only XML files are allowed.' ) );
+	}
+	
+	// Additional check: Verify the file actually contains XML content
+	$file_content = file_get_contents( $uploaded_file['tmp_name'], false, null, 0, 2048 );
+	// Remove BOM if present
+	$file_content = preg_replace('/^\xEF\xBB\xBF/', '', $file_content);
+	if ( stripos( $file_content, '<?xml' ) === false && stripos( $file_content, '<rss' ) === false ) {
+		return array( 'errors' => 1, 'messages' => array( 'File does not appear to be valid XML content.' ) );
+	}
+
 	// Move uploaded file to temporary location
 	$temp_file = wp_tempnam( $uploaded_file['name'] );
 	if ( !move_uploaded_file( $uploaded_file['tmp_name'], $temp_file ) ) {
@@ -1746,6 +1765,25 @@ function uimptr_ajax_process_xml_import() {
 		wp_send_json_error( 'Please upload a valid XML file.' );
 	}
 	
+	// SECURITY: Validate uploaded file type before processing
+	// XML files may have various mime types: text/xml, application/xml, text/plain
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$detected_mime = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	$allowed_xml_mimes = array( 'text/xml', 'application/xml', 'text/plain' );
+	if ( ! in_array( $detected_mime, $allowed_xml_mimes, true ) ) {
+		wp_send_json_error( 'Invalid file type. Only XML files are allowed.' );
+	}
+	
+	// Additional check: Verify the file actually contains XML content
+	$file_content = file_get_contents( $uploaded_file['tmp_name'], false, null, 0, 2048 );
+	// Remove BOM if present
+	$file_content = preg_replace('/^\xEF\xBB\xBF/', '', $file_content);
+	if ( stripos( $file_content, '<?xml' ) === false && stripos( $file_content, '<rss' ) === false ) {
+		wp_send_json_error( 'File does not appear to be valid XML content.' );
+	}
+	
 	// Store the file temporarily
 	$temp_file_result = uimptr_store_temp_file( $uploaded_file );
 	if ( is_wp_error( $temp_file_result ) ) {
@@ -1819,6 +1857,18 @@ function uimptr_ajax_process_csv_import() {
 	
 	if ( $file_extension !== 'csv' ) {
 		wp_send_json_error( 'Please upload a valid CSV file.' );
+	}
+	
+	// SECURITY: Validate uploaded file is actually a text/CSV file
+	// CSV files should be plain text, check mime type
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$mime_type = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	// Accept text/plain, text/csv, and text/x-csv (different systems report differently)
+	$allowed_csv_mimes = array( 'text/plain', 'text/csv', 'text/x-csv', 'application/csv', 'application/vnd.ms-excel' );
+	if ( ! in_array( $mime_type, $allowed_csv_mimes, true ) ) {
+		wp_send_json_error( 'Invalid file type. Only CSV files are allowed.' );
 	}
 	
 	// Store the file temporarily
@@ -2400,8 +2450,13 @@ function uimptr_store_temp_file( $uploaded_file ) {
 		return new WP_Error( 'temp_dir_not_writable', 'Temporary directory is not writable: ' . $temp_dir );
 	}
 	
-	// Generate unique filename
-	$temp_filename = 'xml_import_' . wp_generate_password( 12, false ) . '_' . time() . '.xml';
+	// Generate unique filename with proper extension
+	$file_extension = pathinfo( $uploaded_file['name'], PATHINFO_EXTENSION );
+	$file_extension = sanitize_file_name( $file_extension ); // Sanitize extension
+	$temp_filename = 'import_' . wp_generate_password( 12, false ) . '_' . time();
+	if ( ! empty( $file_extension ) ) {
+		$temp_filename .= '.' . $file_extension;
+	}
 	$temp_file_path = $temp_dir . '/' . $temp_filename;
 	
 	// Move uploaded file to temp location

@@ -54,8 +54,13 @@ class FileSystem {
 			return new \WP_Error( 'temp_dir_not_writable', 'Temporary directory is not writable: ' . $temp_dir );
 		}
 		
-		// Generate unique filename
-		$temp_filename = 'xml_import_' . \wp_generate_password( 12, false ) . '_' . time() . '.xml';
+		// Generate unique filename with proper extension
+		$file_extension = pathinfo( $uploaded_file['name'], PATHINFO_EXTENSION );
+		$file_extension = sanitize_file_name( $file_extension ); // Sanitize extension
+		$temp_filename = 'import_' . \wp_generate_password( 12, false ) . '_' . time();
+		if ( ! empty( $file_extension ) ) {
+			$temp_filename .= '.' . $file_extension;
+		}
 		$temp_file_path = $temp_dir . '/' . $temp_filename;
 		
 		// Move uploaded file to temp location
@@ -92,7 +97,8 @@ class FileSystem {
 			return;
 		}
 		
-		$files = glob( $temp_dir . '/xml_import_*.xml' );
+		// Get all import files (xml, csv, or any extension)
+		$files = glob( $temp_dir . '/import_*' );
 		if ( ! $files ) {
 			return;
 		}
