@@ -1,0 +1,13 @@
+# This tells git which files to exclude when creating distribution packages
+
+/tests export-ignore
+/bin export-ignore
+/.github export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+composer.json export-ignore
+composer.lock export-ignore
+phpunit.xml.dist export-ignore
+TESTING.md export-ignore
+setup-tests.sh export-ignore
+.distignore export-ignore

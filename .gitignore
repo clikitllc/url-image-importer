@@ -1,0 +1,35 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Test and coverage files
+/coverage/
+.phpunit.result.cache
+/tests/
+/bin/
+
+# Config files (these can be committed if you want, or ignored)
+# composer.lock
+# phpunit.xml.dist
+# phpunit.xml
+
+# Documentation (development only)
+TESTING.md
+SIMPLE-GUIDE.md
+
+# Scripts (development only)
+setup-tests.sh
+deploy-to-wordpress.sh
+
+# CI/CD
+.github/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
