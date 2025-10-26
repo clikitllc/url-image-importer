@@ -2,6 +2,7 @@
     "name": "urlimageimporter/url-image-importer",
     "description": "URL Image Importer WordPress plugin",
     "type": "project",
+    "license": "GPL-2.0-or-later",
     "autoload": {
         "psr-4": {
             "UrlImageImporter\\Core\\": "src/Core/",
@@ -12,5 +13,15 @@
             "UrlImageImporter\\Utils\\": "src/Utils/"
         }
     },
-    "require": {}
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "yoast/phpunit-polyfills": "^1.0"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-watch": "phpunit-watcher watch"
+    }
 }
