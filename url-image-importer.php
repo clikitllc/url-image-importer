@@ -64,17 +64,7 @@ function uimptr_check_plugin_conflicts() {
         return;
     }
     
-    // Show friendly compatibility notice if Big File Uploads is also active
-    if (function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php')) {
-        // Only show once per week to avoid spam
-        if (!get_transient('uimptr_bfu_compatibility_notice_shown')) {
-            echo '<div class="notice notice-success is-dismissible"><p>';
-            echo '<strong>✓ URL Image Importer & Big File Uploads:</strong> ';
-            echo esc_html__('Perfect! Both plugins are active and fully compatible. URL Image Importer handles bulk imports while Big File Uploads manages large file uploads - no conflicts detected.', 'url-image-importer');
-            echo '</p></div>';
-            set_transient('uimptr_bfu_compatibility_notice_shown', true, WEEK_IN_SECONDS);
-        }
-    }
+    // Removed compatibility notice - plugins work together without notification needed
     
     // Check for potential class conflicts (shouldn't happen with proper namespacing)
     $conflicts = [];
@@ -1183,11 +1173,9 @@ function uimptr_import_images_url_page() {
 		$('#download-sample-csv').click(function(e) {
 			e.preventDefault();
 			var csvContent = 'url,title,description,alt_text,date\n';
-			csvContent += 'https://picsum.photos/800/600?random=1,Scenic Landscape,Beautiful mountain landscape with crystal clear lake reflection,Mountain landscape with lake reflection,2024-01-15\n';
-			csvContent += 'https://picsum.photos/600/800?random=2,Portrait Photography,Professional portrait with natural lighting and soft background,Professional portrait photo,2024-02-20\n';
-			csvContent += 'https://picsum.photos/1200/400?random=3,Panoramic View,Wide panoramic view of city skyline during golden hour,City skyline panorama,2024-03-10\n';
-			csvContent += 'https://picsum.photos/500/500?random=4,Abstract Art,Modern abstract composition with vibrant colors and geometric shapes,Abstract geometric art,2024-04-05\n';
-			csvContent += 'https://picsum.photos/800/800?random=5,Nature Photography,Close-up macro shot of dewdrops on flower petals,Dewdrops on flower macro,2024-05-12';
+			csvContent += 'https://i0.wp.com/wordpress.org/files/2024/04/photo-community-1.png?w=1216&ssl=1,WordPress Community Photo,Official WordPress community photo showcasing collaboration,WordPress community collaboration,2024-01-15\n';
+			csvContent += '"https://elementor.com/cdn-cgi/image/f=auto,w=1370/wp-content/uploads/2024/06/drag-and-drop.webp",Elementor Image,Elementor drag and drop interface demonstration,Elementor interface demo,2024-02-20\n';
+			csvContent += 'https://s.w.org/images/core/emoji/15.0.3/72x72/1f680.png,Rocket Emoji,WordPress rocket emoji representing speed and performance,WordPress rocket emoji,2024-03-10\n';
 			
 			var blob = new Blob([csvContent], { type: 'text/csv' });
 			var url = window.URL.createObjectURL(blob);
@@ -1329,9 +1317,19 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		}
 	}
 	
-	$response = wp_remote_get( $image_url );
+	$response = wp_remote_get( $image_url, array(
+		'timeout' => 30,
+		'redirection' => 5,
+		'user-agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . get_bloginfo( 'url' )
+	) );
+	
 	if ( is_wp_error( $response ) ) {
-		return new WP_Error( 'image_download_failed', 'Failed to download image.' );
+		return new WP_Error( 'image_download_failed', 'Failed to download image: ' . $response->get_error_message() );
+	}
+
+	$response_code = wp_remote_retrieve_response_code( $response );
+	if ( $response_code !== 200 ) {
+		return new WP_Error( 'image_download_failed', sprintf( 'Failed to download image. HTTP status: %d', $response_code ) );
 	}
 
 	$image_data = wp_remote_retrieve_body( $response );
@@ -1374,24 +1372,43 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		return new WP_Error( 'invalid_image', 'File failed content validation. Not a valid image file.' );
 	}
 	
-	// Verify it's actually an image by checking if we can get image info
-	$image_info = @getimagesize( $temp_file );
-	if ( $image_info === false ) {
-		@unlink( $temp_file );
-		return new WP_Error( 'invalid_image', 'File is not a valid image format.' );
-	}
-	
-	// SECURITY: Validate that mime type from content is in allowed list
-	$allowed_mime_types = get_allowed_mime_types();
-	if ( ! in_array( $image_info['mime'], $allowed_mime_types, true ) ) {
-		@unlink( $temp_file );
-		return new WP_Error( 'invalid_image_mime', 'Image mime type is not allowed.' );
-	}
-	
 	// SECURITY: Ensure the detected type is an image mime type
 	if ( strpos( $wp_filetype['type'], 'image/' ) !== 0 ) {
 		@unlink( $temp_file );
 		return new WP_Error( 'invalid_image', 'File must be an image type.' );
+	}
+	
+	// Special handling for SVG files (getimagesize doesn't work with SVG)
+	$is_svg = ( $wp_filetype['ext'] === 'svg' || $wp_filetype['type'] === 'image/svg+xml' );
+	
+	if ( $is_svg ) {
+		// Validate SVG content
+		$svg_content = file_get_contents( $temp_file );
+		if ( $svg_content === false || strpos( $svg_content, '<svg' ) === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_svg', 'File is not a valid SVG file.' );
+		}
+		
+		// SECURITY: Validate that SVG mime type is in allowed list
+		$allowed_mime_types = get_allowed_mime_types();
+		if ( ! in_array( 'image/svg+xml', $allowed_mime_types, true ) ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'svg_not_allowed', 'SVG files are not allowed on this site.' );
+		}
+	} else {
+		// Verify it's actually an image by checking if we can get image info (raster images only)
+		$image_info = @getimagesize( $temp_file );
+		if ( $image_info === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_image', 'File is not a valid image format.' );
+		}
+		
+		// SECURITY: Validate that mime type from content is in allowed list
+		$allowed_mime_types = get_allowed_mime_types();
+		if ( ! in_array( $image_info['mime'], $allowed_mime_types, true ) ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_image_mime', 'Image mime type is not allowed.' );
+		}
 	}
 	
 	// Build filename with validated extension from actual content
@@ -1407,7 +1424,18 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 	$file_path = $upload_dir['path'] . '/' . $filename;
 	
 	// Move the validated temp file to final location
-	if ( ! @rename( $temp_file, $file_path ) ) {
+	// Use copy + unlink instead of rename for cross-filesystem compatibility (cloud storage)
+	$moved = @rename( $temp_file, $file_path );
+	
+	// If rename fails (different filesystems, e.g., cloud storage), use copy + unlink
+	if ( ! $moved ) {
+		$moved = @copy( $temp_file, $file_path );
+		if ( $moved ) {
+			@unlink( $temp_file );
+		}
+	}
+	
+	if ( ! $moved ) {
 		@unlink( $temp_file );
 		return new WP_Error( 'file_move_failed', 'Failed to move validated file to uploads directory.' );
 	}
@@ -2257,17 +2285,22 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 		return new WP_Error( 'empty_content', 'CSV content is empty' );
 	}
 	
-	// Parse CSV content
-	$lines = str_getcsv( $csv_content, "\n" );
-	if ( empty( $lines ) ) {
+	// Parse CSV content using a temporary stream to properly handle quoted fields
+	$stream = fopen( 'php://temp', 'r+' );
+	fwrite( $stream, $csv_content );
+	rewind( $stream );
+	
+	// Get header row
+	$headers = fgetcsv( $stream );
+	if ( $headers === false ) {
+		fclose( $stream );
 		return new WP_Error( 'invalid_csv', 'Failed to parse CSV file.' );
 	}
 	
-	// Get header row
-	$headers = str_getcsv( array_shift( $lines ) );
 	$url_index = array_search( 'url', $headers );
 	
 	if ( $url_index === false ) {
+		fclose( $stream );
 		return new WP_Error( 'missing_url_column', 'CSV file must contain a "url" column.' );
 	}
 	
@@ -2280,13 +2313,8 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 	$urls_data = array();
 	$images_only = isset( $_POST['images_only'] ) && $_POST['images_only'];
 	
-	foreach ( $lines as $line_num => $line ) {
-		if ( empty( trim( $line ) ) ) {
-			continue; // Skip empty lines
-		}
-		
-		$data = str_getcsv( $line );
-		
+	// Read each row
+	while ( ( $data = fgetcsv( $stream ) ) !== false ) {
 		// Skip if not enough columns
 		if ( count( $data ) <= $url_index ) {
 			continue;
@@ -2340,6 +2368,8 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 			'metadata' => $metadata
 		);
 	}
+	
+	fclose( $stream );
 	
 	if ( empty( $urls_data ) ) {
 		return new WP_Error( 'no_valid_urls', 'No valid URLs found in the CSV file.' );
