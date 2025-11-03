@@ -105,6 +105,66 @@ function uimptr_admin_menu() {
 	);
 }
 
+// Enable SVG uploads for the plugin
+add_filter( 'upload_mimes', 'uimptr_add_svg_mime_type' );
+function uimptr_add_svg_mime_type( $mimes ) {
+	// Only add SVG support if not already present
+	if ( ! isset( $mimes['svg'] ) ) {
+		$mimes['svg'] = 'image/svg+xml';
+	}
+	return $mimes;
+}
+
+// Add SVG to allowed file types for wp_check_filetype
+add_filter( 'wp_check_filetype_and_ext', 'uimptr_check_svg_filetype', 10, 4 );
+function uimptr_check_svg_filetype( $data, $file, $filename, $mimes ) {
+	$filetype = wp_check_filetype( $filename, $mimes );
+	
+	// If it's an SVG file, ensure proper detection
+	if ( $filetype['ext'] === 'svg' ) {
+		$data['ext'] = 'svg';
+		$data['type'] = 'image/svg+xml';
+		$data['proper_filename'] = $filename;
+	}
+	
+	return $data;
+}
+
+/**
+ * Sanitize SVG content for security
+ */
+function uimptr_sanitize_svg_content( $content ) {
+	// Remove potentially dangerous elements and attributes
+	$dangerous_elements = array(
+		'script', 'object', 'embed', 'link', 'style', 'meta', 'iframe', 
+		'frame', 'frameset', 'form', 'input', 'button', 'textarea'
+	);
+	
+	$dangerous_attributes = array(
+		'onload', 'onclick', 'onmouseover', 'onerror', 'onmouseout', 
+		'onmousemove', 'onmousedown', 'onmouseup', 'onfocus', 'onblur',
+		'onkeydown', 'onkeyup', 'onkeypress', 'onchange', 'onselect',
+		'onsubmit', 'onreset', 'onabort', 'onunload', 'onresize'
+	);
+	
+	// Remove dangerous elements
+	foreach ( $dangerous_elements as $element ) {
+		$content = preg_replace( '#<' . $element . '[^>]*>.*?</' . $element . '>#is', '', $content );
+		$content = preg_replace( '#<' . $element . '[^>]*/?>#is', '', $content );
+	}
+	
+	// Remove dangerous attributes
+	foreach ( $dangerous_attributes as $attr ) {
+		$content = preg_replace( '#\s' . $attr . '\s*=\s*["\'][^"\']*["\']#is', '', $content );
+		$content = preg_replace( '#\s' . $attr . '\s*=\s*[^>\s]*#is', '', $content );
+	}
+	
+	// Remove javascript: and data: URLs
+	$content = preg_replace( '#(href|src|action)\s*=\s*["\']?\s*(javascript|data):[^"\'>\s]*#is', '', $content );
+	
+	return $content;
+}
+
 // Fallback menu registration - only add if PSR-4 Plugin class didn't register it
 add_action( 'admin_menu', function() {
 	// Check if PSR-4 Plugin class successfully registered the menu
@@ -1411,11 +1471,20 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 	$is_svg = ( $wp_filetype['ext'] === 'svg' || $wp_filetype['type'] === 'image/svg+xml' );
 	
 	if ( $is_svg ) {
-		// Validate SVG content
+		// Validate and sanitize SVG content
 		$svg_content = file_get_contents( $temp_file );
 		if ( $svg_content === false || strpos( $svg_content, '<svg' ) === false ) {
 			@unlink( $temp_file );
 			return new WP_Error( 'invalid_svg', 'File is not a valid SVG file.' );
+		}
+		
+		// SECURITY: Sanitize SVG content to remove potential XSS
+		$svg_content = uimptr_sanitize_svg_content( $svg_content );
+		
+		// Write sanitized content back to temp file
+		if ( file_put_contents( $temp_file, $svg_content ) === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'svg_sanitization_failed', 'Failed to sanitize SVG file.' );
 		}
 		
 		// SECURITY: Validate that SVG mime type is in allowed list
