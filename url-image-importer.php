@@ -24,11 +24,15 @@ define( 'UIMPTR_VERSION', '1.0.7' );
 define( 'UPLOADBLOGSDIR', $upload_dir['basedir'] );  // Use basedir for root uploads folder, not path (current month)
 
 // Composer autoload for PSR-4 classes
+$autoload_loaded = false;
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
+    $autoload_loaded = true;
     
     // Initialize the Plugin class to enable action links and other features
-    \UrlImageImporter\Core\Plugin::get_instance();
+    if (class_exists('\UrlImageImporter\Core\Plugin')) {
+        \UrlImageImporter\Core\Plugin::get_instance();
+    }
 }
 
 // Check if Big File Uploads plugin exists and is active
@@ -38,9 +42,9 @@ $big_file_uploads_exists = file_exists(WP_PLUGIN_DIR . '/tuxedo-big-file-uploads
 // URL Image Importer uses completely independent classes to avoid conflicts
 // Different class names, namespaces, and prefixes ensure no collisions with Big File Uploads
 
-// Load legacy classes only if Big File Uploads plugin is NOT active
+// Load legacy classes only if Big File Uploads plugin is NOT active AND autoloader is working
 // This prevents constant and class collisions
-if (!$big_file_uploads_active) {
+if (!$big_file_uploads_active && $autoload_loaded) {
     // Only load file scan class if not already loaded
     if (!class_exists('Ui_Big_File_Uploads_File_Scan')) {
         require_once UIMPTR_PATH . '/classes/class-ui-big-file-uploads-file-scan.php';

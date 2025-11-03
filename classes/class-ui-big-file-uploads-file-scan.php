@@ -14,8 +14,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Legacy wrapper for PSR-4 migration. Use UrlImageImporter\FileScan\UiBigFileUploadsFileScan instead.
 // Ensure the PSR-4 class is loaded before extending it
 if (!class_exists('UrlImageImporter\FileScan\UiBigFileUploadsFileScan')) {
+    // Try to load the autoloader if it's not already loaded
+    $autoload_path = dirname(__DIR__) . '/vendor/autoload.php';
+    if (file_exists($autoload_path)) {
+        require_once $autoload_path;
+    }
+    
     // Force autoloader to load the class
-    class_exists('UrlImageImporter\FileScan\UiBigFileUploadsFileScan', true);
+    if (!class_exists('UrlImageImporter\FileScan\UiBigFileUploadsFileScan')) {
+        // If PSR-4 class still can't be found, create a stub to prevent fatal error
+        require_once dirname(__DIR__) . '/src/FileScan/UiBigFileUploadsFileScan.php';
+    }
 }
 
 class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFileUploadsFileScan {
