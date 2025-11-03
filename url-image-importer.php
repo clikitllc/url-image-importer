@@ -31,7 +31,12 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     
     // Initialize the Plugin class to enable action links and other features
     if (class_exists('\UrlImageImporter\Core\Plugin')) {
-        \UrlImageImporter\Core\Plugin::get_instance();
+        try {
+            \UrlImageImporter\Core\Plugin::get_instance();
+        } catch (Exception $e) {
+            // If PSR-4 Plugin class fails, fallback menu will be used
+            error_log('URL Image Importer: Plugin class initialization failed: ' . $e->getMessage());
+        }
     }
 }
 
@@ -88,18 +93,38 @@ function uimptr_check_plugin_conflicts() {
 /**
  * Plugin menu page callback.
  * NOTE: Menu registration moved to Plugin class (src/Core/Plugin.php)
- * Keeping this function commented out to avoid duplicate menu items
+ * Fallback registration in case PSR-4 system fails
  */
-// function uimptr_admin_menu() {
-// 	add_media_page(
-// 		'Import Images from URLs',
-// 		'Import Images',
-// 		'upload_files',
-// 		'import-images-url',
-// 		'uimptr_import_images_url_page'
-// 	);
-// }
-// add_action( 'admin_menu', 'uimptr_admin_menu' );
+function uimptr_admin_menu() {
+	add_media_page(
+		'Import Images from URLs',
+		'Import Images',
+		'upload_files',
+		'import-images-url',
+		'uimptr_import_images_url_page'
+	);
+}
+
+// Fallback menu registration - only add if PSR-4 Plugin class didn't register it
+add_action( 'admin_menu', function() {
+	// Check if PSR-4 Plugin class successfully registered the menu
+	global $submenu;
+	$psr4_menu_exists = false;
+	
+	if (isset($submenu['upload.php'])) {
+		foreach ($submenu['upload.php'] as $item) {
+			if (isset($item[2]) && $item[2] === 'import-images-url') {
+				$psr4_menu_exists = true;
+				break;
+			}
+		}
+	}
+	
+	// If PSR-4 menu doesn't exist, register fallback
+	if (!$psr4_menu_exists) {
+		uimptr_admin_menu();
+	}
+}, 20); // Priority 20 to run after PSR-4 Plugin class
 
 /**
  * Enqueue scripts and styles
