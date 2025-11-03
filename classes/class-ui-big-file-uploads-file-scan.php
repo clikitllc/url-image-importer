@@ -12,6 +12,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Lists files using a Breadth-First search algorithm to allow for time limits and resume across multiple requests.
  */
 // Legacy wrapper for PSR-4 migration. Use UrlImageImporter\FileScan\UiBigFileUploadsFileScan instead.
+// Ensure the PSR-4 class is loaded before extending it
+if (!class_exists('UrlImageImporter\FileScan\UiBigFileUploadsFileScan')) {
+    // Force autoloader to load the class
+    class_exists('UrlImageImporter\FileScan\UiBigFileUploadsFileScan', true);
+}
+
 class Ui_Big_File_Uploads_File_Scan extends \UrlImageImporter\FileScan\UiBigFileUploadsFileScan {
 
 	/**
