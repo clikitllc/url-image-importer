@@ -38,6 +38,46 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
             error_log('URL Image Importer: Plugin class initialization failed: ' . $e->getMessage());
         }
     }
+} else {
+    // Simple PSR-4 autoloader fallback when Composer autoloader is not available
+    spl_autoload_register(function ($class) {
+        // Project-specific namespace prefix
+        $prefix = 'UrlImageImporter\\';
+        
+        // Base directory for the namespace prefix
+        $base_dir = __DIR__ . '/src/';
+        
+        // Does the class use the namespace prefix?
+        $len = strlen($prefix);
+        if (strncmp($prefix, $class, $len) !== 0) {
+            // No, move to the next registered autoloader
+            return;
+        }
+        
+        // Get the relative class name
+        $relative_class = substr($class, $len);
+        
+        // Replace the namespace prefix with the base directory, replace namespace
+        // separators with directory separators in the relative class name, append
+        // with .php
+        $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+        
+        // If the file exists, require it
+        if (file_exists($file)) {
+            require $file;
+        }
+    });
+    $autoload_loaded = true;
+    
+    // Initialize the Plugin class to enable action links and other features
+    if (class_exists('\UrlImageImporter\Core\Plugin')) {
+        try {
+            \UrlImageImporter\Core\Plugin::get_instance();
+        } catch (Exception $e) {
+            // If PSR-4 Plugin class fails, fallback menu will be used
+            error_log('URL Image Importer: Plugin class initialization failed: ' . $e->getMessage());
+        }
+    }
 }
 
 // Check if Big File Uploads plugin exists and is active
