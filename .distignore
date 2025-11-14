@@ -1,0 +1,51 @@
+# WordPress.org SVN - Don't include these files in releases
+.git
+.github
+.gitignore
+.gitattributes
+.editorconfig
+.distignore
+.phpcs.xml.dist
+
+# Development files
+composer.json
+composer.lock
+package.json
+package-lock.json
+node_modules
+vendor
+
+# Test files
+tests
+bin
+phpunit.xml
+phpunit.xml.dist
+.phpunit.result.cache
+TESTING.md
+SIMPLE-GUIDE.md
+setup-tests.sh
+deploy-to-wordpress.sh
+
+# CI/CD
+.travis.yml
+circle.yml
+.circleci
+phpcs.xml
+phpcs.xml.dist
+.php_cs
+.php_cs.dist
+
+# IDE
+.vscode
+.idea
+*.sublime-project
+*.sublime-workspace
+
+# Logs and temp
+*.log
+.DS_Store
+Thumbs.db
+coverage
+
+# Documentation (if you want to exclude)
+# README.md

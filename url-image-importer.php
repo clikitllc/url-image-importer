@@ -3,14 +3,14 @@
  *
  * Plugin Name: URL Image Importer
  * Description: A plugin to import multiple images into the WordPress Media Library from URLs.
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: Infinite Uploads
  * Author URI: https://infiniteuploads.com
  * Text Domain: url-image-importer
  * License: GPL2
  *
  * @package UrlImageImporter
- * @version 1.0
+ * @version 1.0.7
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,15 +20,64 @@ if ( ! defined( 'ABSPATH' ) ) {
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', '1.0.6' );
+define( 'UIMPTR_VERSION', '1.0.7' );
 define( 'UPLOADBLOGSDIR', $upload_dir['basedir'] );  // Use basedir for root uploads folder, not path (current month)
 
 // Composer autoload for PSR-4 classes
+$autoload_loaded = false;
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
     require_once __DIR__ . '/vendor/autoload.php';
+    $autoload_loaded = true;
     
     // Initialize the Plugin class to enable action links and other features
-    \UrlImageImporter\Core\Plugin::get_instance();
+    if (class_exists('\UrlImageImporter\Core\Plugin')) {
+        try {
+            \UrlImageImporter\Core\Plugin::get_instance();
+        } catch (Exception $e) {
+            // If PSR-4 Plugin class fails, fallback menu will be used
+            error_log('URL Image Importer: Plugin class initialization failed: ' . $e->getMessage());
+        }
+    }
+} else {
+    // Simple PSR-4 autoloader fallback when Composer autoloader is not available
+    spl_autoload_register(function ($class) {
+        // Project-specific namespace prefix
+        $prefix = 'UrlImageImporter\\';
+        
+        // Base directory for the namespace prefix
+        $base_dir = __DIR__ . '/src/';
+        
+        // Does the class use the namespace prefix?
+        $len = strlen($prefix);
+        if (strncmp($prefix, $class, $len) !== 0) {
+            // No, move to the next registered autoloader
+            return;
+        }
+        
+        // Get the relative class name
+        $relative_class = substr($class, $len);
+        
+        // Replace the namespace prefix with the base directory, replace namespace
+        // separators with directory separators in the relative class name, append
+        // with .php
+        $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+        
+        // If the file exists, require it
+        if (file_exists($file)) {
+            require $file;
+        }
+    });
+    $autoload_loaded = true;
+    
+    // Initialize the Plugin class to enable action links and other features
+    if (class_exists('\UrlImageImporter\Core\Plugin')) {
+        try {
+            \UrlImageImporter\Core\Plugin::get_instance();
+        } catch (Exception $e) {
+            // If PSR-4 Plugin class fails, fallback menu will be used
+            error_log('URL Image Importer: Plugin class initialization failed: ' . $e->getMessage());
+        }
+    }
 }
 
 // Check if Big File Uploads plugin exists and is active
@@ -38,9 +87,9 @@ $big_file_uploads_exists = file_exists(WP_PLUGIN_DIR . '/tuxedo-big-file-uploads
 // URL Image Importer uses completely independent classes to avoid conflicts
 // Different class names, namespaces, and prefixes ensure no collisions with Big File Uploads
 
-// Load legacy classes only if Big File Uploads plugin is NOT active
+// Load legacy classes only if Big File Uploads plugin is NOT active AND autoloader is working
 // This prevents constant and class collisions
-if (!$big_file_uploads_active) {
+if (!$big_file_uploads_active && $autoload_loaded) {
     // Only load file scan class if not already loaded
     if (!class_exists('Ui_Big_File_Uploads_File_Scan')) {
         require_once UIMPTR_PATH . '/classes/class-ui-big-file-uploads-file-scan.php';
@@ -64,17 +113,7 @@ function uimptr_check_plugin_conflicts() {
         return;
     }
     
-    // Show friendly compatibility notice if Big File Uploads is also active
-    if (function_exists('is_plugin_active') && is_plugin_active('tuxedo-big-file-uploads/tuxedo_big_file_uploads.php')) {
-        // Only show once per week to avoid spam
-        if (!get_transient('uimptr_bfu_compatibility_notice_shown')) {
-            echo '<div class="notice notice-success is-dismissible"><p>';
-            echo '<strong>✓ URL Image Importer & Big File Uploads:</strong> ';
-            echo esc_html__('Perfect! Both plugins are active and fully compatible. URL Image Importer handles bulk imports while Big File Uploads manages large file uploads - no conflicts detected.', 'url-image-importer');
-            echo '</p></div>';
-            set_transient('uimptr_bfu_compatibility_notice_shown', true, WEEK_IN_SECONDS);
-        }
-    }
+    // Removed compatibility notice - plugins work together without notification needed
     
     // Check for potential class conflicts (shouldn't happen with proper namespacing)
     $conflicts = [];
@@ -94,18 +133,98 @@ function uimptr_check_plugin_conflicts() {
 /**
  * Plugin menu page callback.
  * NOTE: Menu registration moved to Plugin class (src/Core/Plugin.php)
- * Keeping this function commented out to avoid duplicate menu items
+ * Fallback registration in case PSR-4 system fails
  */
-// function uimptr_admin_menu() {
-// 	add_media_page(
-// 		'Import Images from URLs',
-// 		'Import Images',
-// 		'upload_files',
-// 		'import-images-url',
-// 		'uimptr_import_images_url_page'
-// 	);
-// }
-// add_action( 'admin_menu', 'uimptr_admin_menu' );
+function uimptr_admin_menu() {
+	add_media_page(
+		'Import Images from URLs',
+		'Import Images',
+		'upload_files',
+		'import-images-url',
+		'uimptr_import_images_url_page'
+	);
+}
+
+// Enable SVG uploads for the plugin
+add_filter( 'upload_mimes', 'uimptr_add_svg_mime_type' );
+function uimptr_add_svg_mime_type( $mimes ) {
+	// Only add SVG support if not already present
+	if ( ! isset( $mimes['svg'] ) ) {
+		$mimes['svg'] = 'image/svg+xml';
+	}
+	return $mimes;
+}
+
+// Add SVG to allowed file types for wp_check_filetype
+add_filter( 'wp_check_filetype_and_ext', 'uimptr_check_svg_filetype', 10, 4 );
+function uimptr_check_svg_filetype( $data, $file, $filename, $mimes ) {
+	$filetype = wp_check_filetype( $filename, $mimes );
+	
+	// If it's an SVG file, ensure proper detection
+	if ( $filetype['ext'] === 'svg' ) {
+		$data['ext'] = 'svg';
+		$data['type'] = 'image/svg+xml';
+		$data['proper_filename'] = $filename;
+	}
+	
+	return $data;
+}
+
+/**
+ * Sanitize SVG content for security
+ */
+function uimptr_sanitize_svg_content( $content ) {
+	// Remove potentially dangerous elements and attributes
+	$dangerous_elements = array(
+		'script', 'object', 'embed', 'link', 'style', 'meta', 'iframe', 
+		'frame', 'frameset', 'form', 'input', 'button', 'textarea'
+	);
+	
+	$dangerous_attributes = array(
+		'onload', 'onclick', 'onmouseover', 'onerror', 'onmouseout', 
+		'onmousemove', 'onmousedown', 'onmouseup', 'onfocus', 'onblur',
+		'onkeydown', 'onkeyup', 'onkeypress', 'onchange', 'onselect',
+		'onsubmit', 'onreset', 'onabort', 'onunload', 'onresize'
+	);
+	
+	// Remove dangerous elements
+	foreach ( $dangerous_elements as $element ) {
+		$content = preg_replace( '#<' . $element . '[^>]*>.*?</' . $element . '>#is', '', $content );
+		$content = preg_replace( '#<' . $element . '[^>]*/?>#is', '', $content );
+	}
+	
+	// Remove dangerous attributes
+	foreach ( $dangerous_attributes as $attr ) {
+		$content = preg_replace( '#\s' . $attr . '\s*=\s*["\'][^"\']*["\']#is', '', $content );
+		$content = preg_replace( '#\s' . $attr . '\s*=\s*[^>\s]*#is', '', $content );
+	}
+	
+	// Remove javascript: and data: URLs
+	$content = preg_replace( '#(href|src|action)\s*=\s*["\']?\s*(javascript|data):[^"\'>\s]*#is', '', $content );
+	
+	return $content;
+}
+
+// Fallback menu registration - only add if PSR-4 Plugin class didn't register it
+add_action( 'admin_menu', function() {
+	// Check if PSR-4 Plugin class successfully registered the menu
+	global $submenu;
+	$psr4_menu_exists = false;
+	
+	if (isset($submenu['upload.php'])) {
+		foreach ($submenu['upload.php'] as $item) {
+			if (isset($item[2]) && $item[2] === 'import-images-url') {
+				$psr4_menu_exists = true;
+				break;
+			}
+		}
+	}
+	
+	// If PSR-4 menu doesn't exist, register fallback
+	if (!$psr4_menu_exists) {
+		uimptr_admin_menu();
+	}
+}, 20); // Priority 20 to run after PSR-4 Plugin class
 
 /**
  * Enqueue scripts and styles
@@ -167,6 +286,25 @@ function uimptr_handle_xml_import() {
 
 	if ( $file_extension !== 'xml' ) {
 		return array( 'errors' => 1, 'messages' => array( 'Please upload a valid XML file.' ) );
+	}
+
+	// SECURITY: Validate uploaded file type before processing
+	// XML files may have various mime types: text/xml, application/xml, text/plain
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$detected_mime = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	$allowed_xml_mimes = array( 'text/xml', 'application/xml', 'text/plain' );
+	if ( ! in_array( $detected_mime, $allowed_xml_mimes, true ) ) {
+		return array( 'errors' => 1, 'messages' => array( 'Invalid file type. Only XML files are allowed.' ) );
+	}
+	
+	// Additional check: Verify the file actually contains XML content
+	$file_content = file_get_contents( $uploaded_file['tmp_name'], false, null, 0, 2048 );
+	// Remove BOM if present
+	$file_content = preg_replace('/^\xEF\xBB\xBF/', '', $file_content);
+	if ( stripos( $file_content, '<?xml' ) === false && stripos( $file_content, '<rss' ) === false ) {
+		return array( 'errors' => 1, 'messages' => array( 'File does not appear to be valid XML content.' ) );
 	}
 
 	// Move uploaded file to temporary location
@@ -1164,11 +1302,9 @@ function uimptr_import_images_url_page() {
 		$('#download-sample-csv').click(function(e) {
 			e.preventDefault();
 			var csvContent = 'url,title,description,alt_text,date\n';
-			csvContent += 'https://picsum.photos/800/600?random=1,Scenic Landscape,Beautiful mountain landscape with crystal clear lake reflection,Mountain landscape with lake reflection,2024-01-15\n';
-			csvContent += 'https://picsum.photos/600/800?random=2,Portrait Photography,Professional portrait with natural lighting and soft background,Professional portrait photo,2024-02-20\n';
-			csvContent += 'https://picsum.photos/1200/400?random=3,Panoramic View,Wide panoramic view of city skyline during golden hour,City skyline panorama,2024-03-10\n';
-			csvContent += 'https://picsum.photos/500/500?random=4,Abstract Art,Modern abstract composition with vibrant colors and geometric shapes,Abstract geometric art,2024-04-05\n';
-			csvContent += 'https://picsum.photos/800/800?random=5,Nature Photography,Close-up macro shot of dewdrops on flower petals,Dewdrops on flower macro,2024-05-12';
+			csvContent += 'https://i0.wp.com/wordpress.org/files/2024/04/photo-community-1.png?w=1216&ssl=1,WordPress Community Photo,Official WordPress community photo showcasing collaboration,WordPress community collaboration,2024-01-15\n';
+			csvContent += '"https://elementor.com/cdn-cgi/image/f=auto,w=1370/wp-content/uploads/2024/06/drag-and-drop.webp",Elementor Image,Elementor drag and drop interface demonstration,Elementor interface demo,2024-02-20\n';
+			csvContent += 'https://s.w.org/images/core/emoji/15.0.3/72x72/1f680.png,Rocket Emoji,WordPress rocket emoji representing speed and performance,WordPress rocket emoji,2024-03-10\n';
 			
 			var blob = new Blob([csvContent], { type: 'text/csv' });
 			var url = window.URL.createObjectURL(blob);
@@ -1310,18 +1446,28 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		}
 	}
 	
-	$response = wp_remote_get( $image_url );
+	$response = wp_remote_get( $image_url, array(
+		'timeout' => 30,
+		'redirection' => 5,
+		'user-agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . get_bloginfo( 'url' )
+	) );
+	
 	if ( is_wp_error( $response ) ) {
-		return new WP_Error( 'image_download_failed', 'Failed to download image.' );
+		return new WP_Error( 'image_download_failed', 'Failed to download image: ' . $response->get_error_message() );
+	}
+
+	$response_code = wp_remote_retrieve_response_code( $response );
+	if ( $response_code !== 200 ) {
+		return new WP_Error( 'image_download_failed', sprintf( 'Failed to download image. HTTP status: %d', $response_code ) );
 	}
 
 	$image_data = wp_remote_retrieve_body( $response );
-	$image_type = wp_remote_retrieve_header( $response, 'content-type' );
-
-	if ( empty( $image_data ) || strpos( $image_type, 'image/' ) !== 0 ) {
-		return new WP_Error( 'invalid_image', 'The provided URL is not a valid image.' );
+	
+	if ( empty( $image_data ) ) {
+		return new WP_Error( 'invalid_image', 'No data received from URL.' );
 	}
 
+	// Extract filename from URL
 	$upload_dir = wp_upload_dir();
 	$filename_url_path = is_string( $image_url ) ? parse_url( $image_url, PHP_URL_PATH ) : false;
 	$filename = '';
@@ -1330,35 +1476,113 @@ function uimptr_import_image_from_url( $image_url, $batch_id = null, $metadata =
 		$filename = basename( $filename_url_path );
 	}
 
-	// If no filename or no extension, generate one based on content type or fallback
-	if ( ! $filename || ! pathinfo( $filename, PATHINFO_EXTENSION ) ) {
-		// Try to get extension from content type
-		$extension = 'jpg'; // Default fallback
-		if ( $image_type ) {
-			$type_parts = explode( '/', $image_type );
-			if ( count( $type_parts ) === 2 ) {
-				$extension = $type_parts[1];
-				// Handle some common variations
-				if ( $extension === 'jpeg' ) {
-					$extension = 'jpg';
-				}
-			}
+	// Sanitize filename and ensure it has a base name
+	if ( ! $filename ) {
+		$filename = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
+	}
+	
+	// Sanitize the filename
+	$filename = sanitize_file_name( $filename );
+	
+	// Create a temporary file first for validation
+	$temp_file = wp_tempnam( $filename );
+	$saved = file_put_contents( $temp_file, $image_data );
+	
+	if ( $saved === false ) {
+		return new WP_Error( 'file_save_failed', 'Failed to save temporary file.' );
+	}
+	
+	// SECURITY: Validate the actual file content using WordPress's image validation
+	$wp_filetype = wp_check_filetype_and_ext( $temp_file, $filename );
+	
+	// Clean up and reject if validation fails
+	if ( ! $wp_filetype['type'] || ! $wp_filetype['ext'] ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image', 'File failed content validation. Not a valid image file.' );
+	}
+	
+	// SECURITY: Ensure the detected type is an image mime type
+	if ( strpos( $wp_filetype['type'], 'image/' ) !== 0 ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'invalid_image', 'File must be an image type.' );
+	}
+	
+	// Special handling for SVG files (getimagesize doesn't work with SVG)
+	$is_svg = ( $wp_filetype['ext'] === 'svg' || $wp_filetype['type'] === 'image/svg+xml' );
+	
+	if ( $is_svg ) {
+		// Validate and sanitize SVG content
+		$svg_content = file_get_contents( $temp_file );
+		if ( $svg_content === false || strpos( $svg_content, '<svg' ) === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_svg', 'File is not a valid SVG file.' );
 		}
 		
-		// Generate filename with title if available
-		$base_name = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
-		$filename = $base_name . '.' . $extension;
+		// SECURITY: Sanitize SVG content to remove potential XSS
+		$svg_content = uimptr_sanitize_svg_content( $svg_content );
+		
+		// Write sanitized content back to temp file
+		if ( file_put_contents( $temp_file, $svg_content ) === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'svg_sanitization_failed', 'Failed to sanitize SVG file.' );
+		}
+		
+		// SECURITY: Validate that SVG mime type is in allowed list
+		$allowed_mime_types = get_allowed_mime_types();
+		if ( ! in_array( 'image/svg+xml', $allowed_mime_types, true ) ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'svg_not_allowed', 'SVG files are not allowed on this site.' );
+		}
+	} else {
+		// Verify it's actually an image by checking if we can get image info (raster images only)
+		$image_info = @getimagesize( $temp_file );
+		if ( $image_info === false ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_image', 'File is not a valid image format.' );
+		}
+		
+		// SECURITY: Validate that mime type from content is in allowed list
+		$allowed_mime_types = get_allowed_mime_types();
+		if ( ! in_array( $image_info['mime'], $allowed_mime_types, true ) ) {
+			@unlink( $temp_file );
+			return new WP_Error( 'invalid_image_mime', 'Image mime type is not allowed.' );
+		}
 	}
-
+	
+	// Build filename with validated extension from actual content
+	$filename_base = pathinfo( $filename, PATHINFO_FILENAME );
+	if ( empty( $filename_base ) ) {
+		$filename_base = !empty($metadata['title']) ? sanitize_file_name( $metadata['title'] ) : 'imported_image_' . time();
+	}
+	$filename = $filename_base . '.' . $wp_filetype['ext'];
+	$filename = sanitize_file_name( $filename );
+	
+	// Generate unique filename to prevent overwrites
+	$filename = wp_unique_filename( $upload_dir['path'], $filename );
 	$file_path = $upload_dir['path'] . '/' . $filename;
 	
-	// Save the file
-	$saved = file_put_contents( $file_path, $image_data );
-	if ( $saved === false ) {
-		return new WP_Error( 'file_save_failed', 'Failed to save image file to uploads directory.' );
+	// Move the validated temp file to final location
+	// Use copy + unlink instead of rename for cross-filesystem compatibility (cloud storage)
+	$moved = @rename( $temp_file, $file_path );
+	
+	// If rename fails (different filesystems, e.g., cloud storage), use copy + unlink
+	if ( ! $moved ) {
+		$moved = @copy( $temp_file, $file_path );
+		if ( $moved ) {
+			@unlink( $temp_file );
+		}
 	}
-
-	$file_type = wp_check_filetype( $filename, null );
+	
+	if ( ! $moved ) {
+		@unlink( $temp_file );
+		return new WP_Error( 'file_move_failed', 'Failed to move validated file to uploads directory.' );
+	}
+	
+	// Use the validated file type
+	$file_type = array(
+		'ext'  => $wp_filetype['ext'],
+		'type' => $wp_filetype['type']
+	);
 	
 	// Verify the file was actually saved and is readable
 	if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
@@ -1707,6 +1931,25 @@ function uimptr_ajax_process_xml_import() {
 		wp_send_json_error( 'Please upload a valid XML file.' );
 	}
 	
+	// SECURITY: Validate uploaded file type before processing
+	// XML files may have various mime types: text/xml, application/xml, text/plain
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$detected_mime = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	$allowed_xml_mimes = array( 'text/xml', 'application/xml', 'text/plain' );
+	if ( ! in_array( $detected_mime, $allowed_xml_mimes, true ) ) {
+		wp_send_json_error( 'Invalid file type. Only XML files are allowed.' );
+	}
+	
+	// Additional check: Verify the file actually contains XML content
+	$file_content = file_get_contents( $uploaded_file['tmp_name'], false, null, 0, 2048 );
+	// Remove BOM if present
+	$file_content = preg_replace('/^\xEF\xBB\xBF/', '', $file_content);
+	if ( stripos( $file_content, '<?xml' ) === false && stripos( $file_content, '<rss' ) === false ) {
+		wp_send_json_error( 'File does not appear to be valid XML content.' );
+	}
+	
 	// Store the file temporarily
 	$temp_file_result = uimptr_store_temp_file( $uploaded_file );
 	if ( is_wp_error( $temp_file_result ) ) {
@@ -1780,6 +2023,18 @@ function uimptr_ajax_process_csv_import() {
 	
 	if ( $file_extension !== 'csv' ) {
 		wp_send_json_error( 'Please upload a valid CSV file.' );
+	}
+	
+	// SECURITY: Validate uploaded file is actually a text/CSV file
+	// CSV files should be plain text, check mime type
+	$finfo = finfo_open( FILEINFO_MIME_TYPE );
+	$mime_type = finfo_file( $finfo, $uploaded_file['tmp_name'] );
+	finfo_close( $finfo );
+	
+	// Accept text/plain, text/csv, and text/x-csv (different systems report differently)
+	$allowed_csv_mimes = array( 'text/plain', 'text/csv', 'text/x-csv', 'application/csv', 'application/vnd.ms-excel' );
+	if ( ! in_array( $mime_type, $allowed_csv_mimes, true ) ) {
+		wp_send_json_error( 'Invalid file type. Only CSV files are allowed.' );
 	}
 	
 	// Store the file temporarily
@@ -2168,17 +2423,22 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 		return new WP_Error( 'empty_content', 'CSV content is empty' );
 	}
 	
-	// Parse CSV content
-	$lines = str_getcsv( $csv_content, "\n" );
-	if ( empty( $lines ) ) {
+	// Parse CSV content using a temporary stream to properly handle quoted fields
+	$stream = fopen( 'php://temp', 'r+' );
+	fwrite( $stream, $csv_content );
+	rewind( $stream );
+	
+	// Get header row
+	$headers = fgetcsv( $stream );
+	if ( $headers === false ) {
+		fclose( $stream );
 		return new WP_Error( 'invalid_csv', 'Failed to parse CSV file.' );
 	}
 	
-	// Get header row
-	$headers = str_getcsv( array_shift( $lines ) );
 	$url_index = array_search( 'url', $headers );
 	
 	if ( $url_index === false ) {
+		fclose( $stream );
 		return new WP_Error( 'missing_url_column', 'CSV file must contain a "url" column.' );
 	}
 	
@@ -2191,13 +2451,8 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 	$urls_data = array();
 	$images_only = isset( $_POST['images_only'] ) && $_POST['images_only'];
 	
-	foreach ( $lines as $line_num => $line ) {
-		if ( empty( trim( $line ) ) ) {
-			continue; // Skip empty lines
-		}
-		
-		$data = str_getcsv( $line );
-		
+	// Read each row
+	while ( ( $data = fgetcsv( $stream ) ) !== false ) {
 		// Skip if not enough columns
 		if ( count( $data ) <= $url_index ) {
 			continue;
@@ -2251,6 +2506,8 @@ function uimptr_extract_urls_from_csv_content( $csv_content, $preserve_dates = f
 			'metadata' => $metadata
 		);
 	}
+	
+	fclose( $stream );
 	
 	if ( empty( $urls_data ) ) {
 		return new WP_Error( 'no_valid_urls', 'No valid URLs found in the CSV file.' );
@@ -2361,8 +2618,13 @@ function uimptr_store_temp_file( $uploaded_file ) {
 		return new WP_Error( 'temp_dir_not_writable', 'Temporary directory is not writable: ' . $temp_dir );
 	}
 	
-	// Generate unique filename
-	$temp_filename = 'xml_import_' . wp_generate_password( 12, false ) . '_' . time() . '.xml';
+	// Generate unique filename with proper extension
+	$file_extension = pathinfo( $uploaded_file['name'], PATHINFO_EXTENSION );
+	$file_extension = sanitize_file_name( $file_extension ); // Sanitize extension
+	$temp_filename = 'import_' . wp_generate_password( 12, false ) . '_' . time();
+	if ( ! empty( $file_extension ) ) {
+		$temp_filename .= '.' . $file_extension;
+	}
 	$temp_file_path = $temp_dir . '/' . $temp_filename;
 	
 	// Move uploaded file to temp location
