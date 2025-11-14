@@ -104,9 +104,8 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 1. URL import tab for adding images directly from public links.
 2. WordPress XML Import tab for importing images from export files.
 3. CSV Import tab for importing bulk image URLs and metadata.
-4. Set maximum upload file size and adjust upload settings.
-5. Disk utility for analyzing storage usage by file type.
-6. Increase upload size for built-in file uploader.
+4. Disk utility for analyzing storage usage by file type.
+
 
 == Installation ==
 
@@ -116,7 +115,8 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 
 == Changelog ==
 
-= 1.0.8 - 11/12/2025 =
+
+= 1.0.7 - 11/14/2025 =
 - Added **CSV import** functionality for batch image imports from spreadsheets.
 - Added **XML import** functionality to support images from WordPress export files.
 - Added import option controls (re-import, preserve date, image-only filter).
@@ -124,8 +124,6 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 - Added “Download Sample CSV” helper link for quick template setup.
 - Improved batch import performance and error handling.
 - General performance improvements and UI refinements.
-
-= 1.0.7 - 10/23/2025 =
 **SECURITY FIX - CRITICAL UPDATE**
 - Fixed: Arbitrary file upload vulnerability reported by Wordfence Threat Intelligence
 - Security: Removed reliance on user-controlled Content-Type HTTP headers for file validation
@@ -135,6 +133,7 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 - Security: Files are now validated in temporary location before moving to uploads directory
 - Security: Added unique filename generation to prevent file overwrites
 - Hardened: Multiple layers of validation ensure only legitimate image files can be imported
+
 
 = 1.0.6 - 10/17/2025 =
 - Added PSR-4 autoloading with Composer for improved code organization
