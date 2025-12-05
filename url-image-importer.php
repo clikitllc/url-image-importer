@@ -3,14 +3,14 @@
  *
  * Plugin Name: URL Image Importer
  * Description: A plugin to import multiple images into the WordPress Media Library from URLs.
- * Version: 1.0.7
+ * Version: 1.0.8
  * Author: Infinite Uploads
  * Author URI: https://infiniteuploads.com
  * Text Domain: url-image-importer
  * License: GPL2
  *
  * @package UrlImageImporter
- * @version 1.0.7
+ * @version 1.0.8
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $upload_dir = wp_upload_dir();
 
 define( 'UIMPTR_PATH', plugin_dir_path( __FILE__ ) );
-define( 'UIMPTR_VERSION', '1.0.7' );
+define( 'UIMPTR_VERSION', '1.0.8' );
 define( 'UPLOADBLOGSDIR', $upload_dir['basedir'] );  // Use basedir for root uploads folder, not path (current month)
 
 // Composer autoload for PSR-4 classes
@@ -171,20 +171,73 @@ function uimptr_check_svg_filetype( $data, $file, $filename, $mimes ) {
 }
 
 /**
- * Sanitize SVG content for security
+ * Sanitize SVG content for security using whitelist-based sanitization
+ * 
+ * Uses the enshrined/svg-sanitize library for comprehensive XSS protection.
+ * Falls back to an extended blacklist approach if the library is unavailable.
+ * 
+ * @param string $content The raw SVG content to sanitize
+ * @return string|false The sanitized SVG content, or false if sanitization fails
  */
 function uimptr_sanitize_svg_content( $content ) {
-	// Remove potentially dangerous elements and attributes
+	// Try to use the enshrined/svg-sanitize library (recommended approach)
+	if ( class_exists( '\\enshrined\\svgSanitize\\Sanitizer' ) ) {
+		$sanitizer = new \enshrined\svgSanitize\Sanitizer();
+		$sanitizer->minify( true );
+		$sanitized = $sanitizer->sanitize( $content );
+		
+		// The library returns false if sanitization fails
+		if ( $sanitized === false ) {
+			return false;
+		}
+		
+		return $sanitized;
+	}
+	
+	// Fallback: Extended blacklist-based sanitization if library is not available
+	// This includes comprehensive coverage of all known XSS vectors in SVG
+	
+	// Dangerous elements that can execute scripts or load external content
 	$dangerous_elements = array(
 		'script', 'object', 'embed', 'link', 'style', 'meta', 'iframe', 
-		'frame', 'frameset', 'form', 'input', 'button', 'textarea'
+		'frame', 'frameset', 'form', 'input', 'button', 'textarea',
+		'foreignobject', 'handler', 'listener'
 	);
 	
+	// Comprehensive list of dangerous event attributes including SVG animation events
 	$dangerous_attributes = array(
+		// Standard DOM events
 		'onload', 'onclick', 'onmouseover', 'onerror', 'onmouseout', 
 		'onmousemove', 'onmousedown', 'onmouseup', 'onfocus', 'onblur',
 		'onkeydown', 'onkeyup', 'onkeypress', 'onchange', 'onselect',
-		'onsubmit', 'onreset', 'onabort', 'onunload', 'onresize'
+		'onsubmit', 'onreset', 'onabort', 'onunload', 'onresize',
+		'ondblclick', 'ondrag', 'ondragend', 'ondragenter', 'ondragleave',
+		'ondragover', 'ondragstart', 'ondrop', 'oninput', 'oninvalid',
+		'onscroll', 'onwheel', 'oncopy', 'oncut', 'onpaste',
+		'oncontextmenu', 'ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel',
+		'onpointerdown', 'onpointermove', 'onpointerup', 'onpointercancel',
+		'onpointerenter', 'onpointerleave', 'onpointerover', 'onpointerout',
+		'ongotpointercapture', 'onlostpointercapture',
+		
+		// SVG animation events (SMIL)
+		'onbegin', 'onend', 'onrepeat', 'onactivate',
+		
+		// SVG-specific events
+		'onfocusin', 'onfocusout', 'onzoom',
+		
+		// Media events (for SVG media elements)
+		'onplay', 'onpause', 'onended', 'onvolumechange', 'ontimeupdate',
+		'oncanplay', 'oncanplaythrough', 'ondurationchange', 'onemptied',
+		'onloadeddata', 'onloadedmetadata', 'onloadstart', 'onprogress',
+		'onratechange', 'onseeked', 'onseeking', 'onstalled', 'onsuspend',
+		'onwaiting', 'onplaying',
+		
+		// Other dangerous attributes
+		'onafterprint', 'onbeforeprint', 'onbeforeunload', 'onhashchange',
+		'onmessage', 'onoffline', 'ononline', 'onpagehide', 'onpageshow',
+		'onpopstate', 'onstorage', 'onanimationstart', 'onanimationend',
+		'onanimationiteration', 'ontransitionend', 'ontransitionstart',
+		'ontransitionrun', 'ontransitioncancel'
 	);
 	
 	// Remove dangerous elements
@@ -193,14 +246,20 @@ function uimptr_sanitize_svg_content( $content ) {
 		$content = preg_replace( '#<' . $element . '[^>]*/?>#is', '', $content );
 	}
 	
-	// Remove dangerous attributes
+	// Remove dangerous attributes (handles quoted and unquoted values)
 	foreach ( $dangerous_attributes as $attr ) {
 		$content = preg_replace( '#\s' . $attr . '\s*=\s*["\'][^"\']*["\']#is', '', $content );
 		$content = preg_replace( '#\s' . $attr . '\s*=\s*[^>\s]*#is', '', $content );
 	}
 	
-	// Remove javascript: and data: URLs
-	$content = preg_replace( '#(href|src|action)\s*=\s*["\']?\s*(javascript|data):[^"\'>\s]*#is', '', $content );
+	// Remove javascript:, data:, and vbscript: URLs from href, src, xlink:href, and action attributes
+	$content = preg_replace( '#(href|src|action|xlink:href)\s*=\s*["\']?\s*(javascript|data|vbscript):[^"\'>\s]*#is', '', $content );
+	
+	// Remove set and animate elements that target dangerous attributes
+	$content = preg_replace( '#<(set|animate)[^>]*(attributeName\s*=\s*["\']?(on[a-z]+)["\']?)[^>]*/?>#is', '', $content );
+	
+	// Remove use elements with external references (potential XSS vector)
+	$content = preg_replace( '#<use[^>]*xlink:href\s*=\s*["\']?https?://[^"\'>\s]*#is', '<use', $content );
 	
 	return $content;
 }

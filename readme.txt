@@ -3,7 +3,7 @@ Contributors: bww
 Tags: import image, image import, import image to media library, media library, csv import, xml import
 Requires at least: 5.3
 Tested up to: 6.7.1
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 Requires PHP: 7.4
 License: GPLv2 or higher
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -115,6 +115,14 @@ No. [Infinite Uploads](https://wordpress.org/plugins/infinite-uploads/) is an op
 
 == Changelog ==
 
+= 1.0.8 - 12/05/2025 =
+**SECURITY FIX - SVG XSS VULNERABILITY**
+- Fixed: Stored Cross-Site Scripting (XSS) vulnerability via SVG file uploads reported by Wordfence
+- Security: Implemented whitelist-based SVG sanitization using the enshrined/svg-sanitize library
+- Security: Extended fallback blacklist to include SVG animation events (onbegin, onend, onrepeat, onactivate)
+- Security: Added comprehensive coverage for all known SVG XSS vectors including SMIL animation events
+- Security: Added protection against javascript:, data:, and vbscript: URL schemes in SVG attributes
+- Security: Added validation to prevent malicious animate/set elements targeting event handlers
 
 = 1.0.7 - 11/14/2025 =
 - Added **CSV import** functionality for batch image imports from spreadsheets.
