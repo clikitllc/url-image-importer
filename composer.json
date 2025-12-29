@@ -14,7 +14,8 @@
         }
     },
     "require": {
-        "php": ">=7.4"
+        "php": ">=7.4",
+        "enshrined/svg-sanitize": "^0.20"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5",
